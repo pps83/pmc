@@ -22,8 +22,7 @@
 //#include <intrin.h>
 
 #if defined(_WIN64) && !defined (__CYGWIN__)
-//#include <intrin.h>  // intrinsics needed in 64 bit Windows because inline asm not supported by MS compiler
-#include "intrin1.h"   // short version of intrin.h
+#include <intrin.h>
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
@@ -62,7 +61,7 @@ static inline void Serialize () {
 #elif defined (__CYGWIN__) // use gcc style inline assembly
 // This version is for gas/AT&T syntax
 
-static void Cpuid (int Output[4], int aa) {	
+static void Cpuid (int Output[4], int aa) {
     int a, b, c, d;
     __asm("cpuid" : "=a"(a),"=b"(b),"=c"(c),"=d"(d) : "a"(aa),"c"(0) : );
     Output[0] = a;
@@ -79,21 +78,21 @@ static inline void Serialize () {
 static inline int Readtsc() {
     // read time stamp counter
     int r;
-    __asm__ __volatile__ ( "rdtsc" : "=a"(r) : : "%edx");    
+    __asm__ __volatile__ ( "rdtsc" : "=a"(r) : : "%edx");
     return r;
 }
 
 static inline int Readpmc(int nPerfCtr) {
     // read performance monitor counter number nPerfCtr
     int r;
-    __asm__ __volatile__ ( "rdpmc" : "=a"(r) : "c"(nPerfCtr) : "%edx");    
+    __asm__ __volatile__ ( "rdpmc" : "=a"(r) : "c"(nPerfCtr) : "%edx");
     return r;
 }
 
 #else // Intrinsics not supported, use inline assembly
 // This version is for 32-bit, MASM syntax
 
-static void Cpuid (int output[4], int functionnumber) {	
+static void Cpuid (int output[4], int functionnumber) {
     __asm {
         mov eax, functionnumber;
         cpuid;
@@ -133,7 +132,7 @@ static inline int Readpmc(int nPerfCtr) {
 
 #pragma warning(default:4035)
 
-#endif  // __INTRIN_H_ 
+#endif  // __INTRIN_H_
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -160,7 +159,7 @@ namespace SyS {  // system-specific process and thread functions
 
     // Set CPU to run on specified CPU core number (0-based)
     static inline void SetProcessMask(int p) {
-        int r = (int)SetThreadAffinityMask(GetCurrentThread(), (ProcMaskType)1 << p);   
+        int r = (int)SetThreadAffinityMask(GetCurrentThread(), (ProcMaskType)1 << p);
         if (r == 0) {
             int e = GetLastError();
             printf("\nFailed to lock thread to processor %i. Error = %i\n", p, e);
@@ -215,13 +214,13 @@ public:
         for (t = 0; t < NumThreads-1; t++) {
             ThreadData[t] = t;
             // create and start thread
-            hThreads[t] = CreateThread( 
+            hThreads[t] = CreateThread(
                 NULL,                   // default security attributes
-                ThreadStackSize,        // stack size  
+                ThreadStackSize,        // stack size
                 ThreadProc1,            // thread function name
-                &ThreadData[t],         // argument to thread function 
-                0,                      // use default creation flags 
-                NULL); 
+                &ThreadData[t],         // argument to thread function
+                0,                      // use default creation flags
+                NULL);
             if (hThreads[t] == 0) {
                 printf("\nFailed to create thread %i", t);
             }
@@ -258,8 +257,8 @@ protected:
 //                         class CMSRDriver
 //
 // Thie class encapsulates the interface to the driver MSRDriver32.sys
-// or MSRDriver64.sys which is needed for privileged access to set up 
-// the model specific registers in the CPU. 
+// or MSRDriver64.sys which is needed for privileged access to set up
+// the model specific registers in the CPU.
 // This class loads, unloads and sends commands to MSRDriver
 //
 //////////////////////////////////////////////////////////////////////
@@ -274,14 +273,14 @@ protected:
     char DriverFileNameE[MAX_PATH], DriverFilePath[MAX_PATH];
 
 public:
-    CMSRDriver() {  // constructor   
+    CMSRDriver() {  // constructor
         // Define Driver filename
         if (Need64BitDriver()) {
             DriverFileName = "MSRDriver64";
         }
         else {
             DriverFileName = "MSRDriver32";
-        }   
+        }
         // Define driver symbolic link name
         DriverSymbolicName = "\\\\.\\slMSRDriver";
 
@@ -300,7 +299,7 @@ public:
         // Unload driver if not already unloaded and close SCM handle
         //if (hDriver) UnloadDriver();
         if (service) {
-            ::CloseServiceHandle(service); service = NULL;   
+            ::CloseServiceHandle(service); service = NULL;
         }
         if (scm) {
             // Optionally unload driver
@@ -326,7 +325,7 @@ public:
             r = OpenDriver();
         }
         if (r) {
-            printf("\nError %i loading driver\n");
+            printf("\nError %i loading driver\n", r);
             return r;
         }
 
@@ -418,7 +417,7 @@ protected:
         // Install driver in database
         service = ::CreateService(scm, DriverFileNameE, "MSR driver",
             SERVICE_START + SERVICE_STOP + DELETE, SERVICE_KERNEL_DRIVER,
-            SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, DriverFilePath, 
+            SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, DriverFilePath,
             NULL, NULL, NULL, NULL, NULL);
 
         if(service == NULL) {
@@ -429,7 +428,7 @@ protected:
             printf("\nFirst time: Installing driver %s\n", DriverFileNameE);
         }
         return e;
-    } 
+    }
 
     int UnInstallDriver() {                   // uninstall MSRDriver
         // uninstall MSRDriver
@@ -523,11 +522,11 @@ protected:
 #ifdef _WIN64
         return 2;
 #else
-        LPFN_ISWOW64PROCESS fnIsWow64Process = 
+        LPFN_ISWOW64PROCESS fnIsWow64Process =
             (LPFN_ISWOW64PROCESS)GetProcAddress(
-            GetModuleHandle("kernel32"),"IsWow64Process");   
-        if (fnIsWow64Process) {      
-            BOOL bIsWow64 = FALSE;      
+            GetModuleHandle("kernel32"),"IsWow64Process");
+        if (fnIsWow64Process) {
+            BOOL bIsWow64 = FALSE;
             if (!fnIsWow64Process(GetCurrentProcess(),&bIsWow64)) {
                 return 0;
             }
@@ -553,7 +552,7 @@ public:
         // This call results in a call to the driver rutine DispatchControl()
         int res = ::DeviceIoControl(hDriver, IOCTL_MSR_DRIVER, pnIn, nInLen,
             pnOut, nOutLen, &len, NULL);
-        if (!res) { 
+        if (!res) {
             // Error
             int e = GetLastError();
             printf("\nCan't access driver. error %i", e);
@@ -573,7 +572,7 @@ public:
     // send commands to driver to read or write MSR registers
     int AccessRegisters(CMSRInOutQue & q) {
         // Number of bytes in/out
-        int n = q.GetSize() * sizeof(SMSRInOut);  
+        int n = q.GetSize() * sizeof(SMSRInOut);
         if (n <= 0) return 0;
         return AccessRegisters(q.queue, n, q.queue, n);
     }
@@ -588,7 +587,7 @@ public:
         a.value = 0;
         AccessRegisters(&a,sizeof(a),&a,sizeof(a));
         return a.val[0];
-    } 
+    }
 
     // send command to driver to write one MSR register
     int MSRWrite(int r, int64 val) {
@@ -618,5 +617,5 @@ public:
         a.register_number = r;
         a.value = val;
         return AccessRegisters(&a,sizeof(a),&a,sizeof(a));
-    } 
+    }
 };
