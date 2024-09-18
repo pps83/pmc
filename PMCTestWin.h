@@ -19,9 +19,9 @@
 #endif
 
 // comment out next line if compiler doesn't support intrinsic functions:
-//#include <intrin.h>
+// #include <intrin.h>
 
-#if defined(_WIN64) && !defined (__CYGWIN__)
+#if defined(_WIN64) && !defined(__CYGWIN__)
 #include <intrin.h>
 #endif
 
@@ -43,11 +43,11 @@ typedef unsigned __int64 uint64;
 #define ALIGNEDSTRUCTURE(Name, Align) __declspec(align(Align)) struct Name
 #endif
 
-
 // Define low level functions
-#ifdef __INTRIN_H_  // Use intrinsics for low level functions
+#ifdef __INTRIN_H_ // Use intrinsics for low level functions
 
-static inline void Serialize () {
+static inline void Serialize()
+{
     // serialize CPU by cpuid function 0
     int dummy[4];
     __cpuid(dummy, 0);
@@ -58,41 +58,46 @@ static inline void Serialize () {
 #define Readtsc __rdtsc
 #define Readpmc __readpmc
 
-#elif defined (__CYGWIN__) // use gcc style inline assembly
+#elif defined(__CYGWIN__) // use gcc style inline assembly
 // This version is for gas/AT&T syntax
 
-static void Cpuid (int Output[4], int aa) {
+static void Cpuid(int Output[4], int aa)
+{
     int a, b, c, d;
-    __asm("cpuid" : "=a"(a),"=b"(b),"=c"(c),"=d"(d) : "a"(aa),"c"(0) : );
+    __asm("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(aa), "c"(0) :);
     Output[0] = a;
     Output[1] = b;
     Output[2] = c;
     Output[3] = d;
 }
 
-static inline void Serialize () {
+static inline void Serialize()
+{
     // serialize CPU
-    __asm__ __volatile__ ( "xorl %%eax, %%eax \n cpuid " : : : "%eax","%ebx","%ecx","%edx" );
+    __asm__ __volatile__("xorl %%eax, %%eax \n cpuid " : : : "%eax", "%ebx", "%ecx", "%edx");
 }
 
-static inline int Readtsc() {
+static inline int Readtsc()
+{
     // read time stamp counter
     int r;
-    __asm__ __volatile__ ( "rdtsc" : "=a"(r) : : "%edx");
+    __asm__ __volatile__("rdtsc" : "=a"(r) : : "%edx");
     return r;
 }
 
-static inline int Readpmc(int nPerfCtr) {
+static inline int Readpmc(int nPerfCtr)
+{
     // read performance monitor counter number nPerfCtr
     int r;
-    __asm__ __volatile__ ( "rdpmc" : "=a"(r) : "c"(nPerfCtr) : "%edx");
+    __asm__ __volatile__("rdpmc" : "=a"(r) : "c"(nPerfCtr) : "%edx");
     return r;
 }
 
 #else // Intrinsics not supported, use inline assembly
 // This version is for 32-bit, MASM syntax
 
-static void Cpuid (int output[4], int functionnumber) {
+static void Cpuid(int output[4], int functionnumber)
+{
     __asm {
         mov eax, functionnumber;
         cpuid;
@@ -104,7 +109,8 @@ static void Cpuid (int output[4], int functionnumber) {
     }
 }
 
-static inline void Serialize () {
+static inline void Serialize()
+{
     // serialize CPU
     __asm {
         xor eax, eax
@@ -114,15 +120,17 @@ static inline void Serialize () {
     // The compiler will save ebx automatically in most cases, but bugs have been observed.
 }
 
-#pragma warning(disable:4035)
-static inline int Readtsc() {
+#pragma warning(disable : 4035)
+static inline int Readtsc()
+{
     // read performance monitor counter number nPerfCtr
     __asm {
         rdtsc
     }
 }
 
-static inline int Readpmc(int nPerfCtr) {
+static inline int Readpmc(int nPerfCtr)
+{
     // read performance monitor counter number nPerfCtr
     __asm {
         mov ecx, nPerfCtr
@@ -130,9 +138,9 @@ static inline int Readpmc(int nPerfCtr) {
     }
 }
 
-#pragma warning(default:4035)
+#pragma warning(default : 4035)
 
-#endif  // __INTRIN_H_
+#endif // __INTRIN_H_
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -145,49 +153,57 @@ static inline int Readpmc(int nPerfCtr) {
 
 ThreadProcedureDeclaration(ThreadProc1);
 
-namespace SyS {  // system-specific process and thread functions
+namespace SyS
+{ // system-specific process and thread functions
 
-    typedef DWORD_PTR ProcMaskType;          // Type for processor mask
-    //typedef unsigned int ProcMaskType;     // If DWORD_PTR not defined
+typedef DWORD_PTR ProcMaskType; // Type for processor mask
+// typedef unsigned int ProcMaskType;     // If DWORD_PTR not defined
 
-    // Get mask of possible CPU cores
-    static inline ProcMaskType GetProcessMask() {
-        ProcMaskType ProcessAffMask = 0, SystemAffMask = 0;
-        GetProcessAffinityMask(GetCurrentProcess(), &ProcessAffMask, &SystemAffMask);
-        return ProcessAffMask;
-    }
+// Get mask of possible CPU cores
+static inline ProcMaskType GetProcessMask()
+{
+    ProcMaskType ProcessAffMask = 0, SystemAffMask = 0;
+    GetProcessAffinityMask(GetCurrentProcess(), &ProcessAffMask, &SystemAffMask);
+    return ProcessAffMask;
+}
 
-    // Set CPU to run on specified CPU core number (0-based)
-    static inline void SetProcessMask(int p) {
-        int r = (int)SetThreadAffinityMask(GetCurrentThread(), (ProcMaskType)1 << p);
-        if (r == 0) {
-            int e = GetLastError();
-            printf("\nFailed to lock thread to processor %i. Error = %i\n", p, e);
-        }
-    }
-
-    // Test if specified CPU core is available
-    static inline int TestProcessMask(int p, ProcMaskType * m) {
-        return ((ProcMaskType)1 << p) & *m;
-    }
-
-    // MainThreadProcNum = GetCurrentProcessorNumber(); // only available in Vista and above
-
-    // Sleep for the rest of current timeslice
-    static inline void Sleep0() {
-        Sleep(0);
-    }
-
-    // Set process (all threads) to high priority
-    static inline void SetProcessPriorityHigh() {
-        SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-    }
-
-    // Set process (all threads) to normal priority
-    static inline void SetProcessPriorityNormal() {
-        SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+// Set CPU to run on specified CPU core number (0-based)
+static inline void SetProcessMask(int p)
+{
+    int r = (int)SetThreadAffinityMask(GetCurrentThread(), (ProcMaskType)1 << p);
+    if (r == 0)
+    {
+        int e = GetLastError();
+        printf("\nFailed to lock thread to processor %i. Error = %i\n", p, e);
     }
 }
+
+// Test if specified CPU core is available
+static inline int TestProcessMask(int p, ProcMaskType* m)
+{
+    return ((ProcMaskType)1 << p) & *m;
+}
+
+// MainThreadProcNum = GetCurrentProcessorNumber(); // only available in Vista and above
+
+// Sleep for the rest of current timeslice
+static inline void Sleep0()
+{
+    Sleep(0);
+}
+
+// Set process (all threads) to high priority
+static inline void SetProcessPriorityHigh()
+{
+    SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+}
+
+// Set process (all threads) to normal priority
+static inline void SetProcessPriorityNormal()
+{
+    SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+}
+} // namespace SyS
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -195,53 +211,64 @@ namespace SyS {  // system-specific process and thread functions
 //
 //////////////////////////////////////////////////////////////////////
 
-#define ThreadStackSize  0x4000    // Stack size for each thread
+#define ThreadStackSize 0x4000 // Stack size for each thread
 
-class ThreadHandler {
+class ThreadHandler
+{
 public:
-    ThreadHandler() {       // constructor
+    ThreadHandler()
+    {
         NumThreads = 0;
-        for (int i = 0; i < MAXTHREADS; i++) {
+        for (int i = 0; i < MAXTHREADS; i++)
+        {
             hThreads[i] = 0;
             ThreadData[i] = 0;
         }
     }
 
-    void Start(int Num) { // start threads
+    void Start(int Num) // start threads
+    {
         int t;
-        if (Num > MAXTHREADS) Num = MAXTHREADS;
+        if (Num > MAXTHREADS)
+            Num = MAXTHREADS;
         NumThreads = Num;
-        for (t = 0; t < NumThreads-1; t++) {
+        for (t = 0; t < NumThreads - 1; t++)
+        {
             ThreadData[t] = t;
             // create and start thread
-            hThreads[t] = CreateThread(
-                NULL,                   // default security attributes
-                ThreadStackSize,        // stack size
-                ThreadProc1,            // thread function name
-                &ThreadData[t],         // argument to thread function
-                0,                      // use default creation flags
+            hThreads[t] = CreateThread(NULL, // default security attributes
+                ThreadStackSize,             // stack size
+                ThreadProc1,                 // thread function name
+                &ThreadData[t],              // argument to thread function
+                0,                           // use default creation flags
                 NULL);
-            if (hThreads[t] == 0) {
+            if (hThreads[t] == 0)
+            {
                 printf("\nFailed to create thread %i", t);
             }
         }
         // last thread = this thread
-        t = NumThreads-1;
+        t = NumThreads - 1;
         ThreadData[t] = t;
         ThreadProc1(&ThreadData[t]);
     }
 
-    void Stop() {
+    void Stop()
+    {
         // wait for threads to finish
-        if (NumThreads == 0) return;
+        if (NumThreads == 0)
+            return;
         WaitForMultipleObjects(NumThreads, hThreads, TRUE, INFINITE);
-        for (int t = 0; t < NumThreads; t++) {
-            if (hThreads[t]) CloseHandle(hThreads[t]);
+        for (int t = 0; t < NumThreads; t++)
+        {
+            if (hThreads[t])
+                CloseHandle(hThreads[t]);
         }
         NumThreads = 0;
     }
 
-    ~ThreadHandler() {  // destructor
+    ~ThreadHandler()
+    {
         Stop();
     }
 
@@ -250,7 +277,6 @@ protected:
     HANDLE hThreads[MAXTHREADS];
     int ThreadData[MAXTHREADS];
 };
-
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -263,22 +289,26 @@ protected:
 //
 //////////////////////////////////////////////////////////////////////
 
-class CMSRDriver {
+class CMSRDriver
+{
 protected:
     SC_HANDLE scm;
     SC_HANDLE service;
     HANDLE hDriver;
-    const char * DriverFileName;
-    const char * DriverSymbolicName;
+    const char* DriverFileName;
+    const char* DriverSymbolicName;
     char DriverFileNameE[MAX_PATH], DriverFilePath[MAX_PATH];
 
 public:
-    CMSRDriver() {  // constructor
+    CMSRDriver()
+    {
         // Define Driver filename
-        if (Need64BitDriver()) {
+        if (Need64BitDriver())
+        {
             DriverFileName = "MSRDriver64";
         }
-        else {
+        else
+        {
             DriverFileName = "MSRDriver32";
         }
         // Define driver symbolic link name
@@ -286,74 +316,88 @@ public:
 
         // Get the full path of the driver file name
         strcpy(DriverFileNameE, DriverFileName);
-        strcat(DriverFileNameE, ".sys");           // append .sys to DriverName
+        strcat(DriverFileNameE, ".sys"); // append .sys to DriverName
         ::GetFullPathName(DriverFileNameE, MAX_PATH, DriverFilePath, NULL);
 
         // Initialize
         service = NULL;
         hDriver = NULL;
-        scm     = NULL;
+        scm = NULL;
     }
 
-    ~CMSRDriver() {  // destructor
+    ~CMSRDriver()
+    {
         // Unload driver if not already unloaded and close SCM handle
-        //if (hDriver) UnloadDriver();
-        if (service) {
-            ::CloseServiceHandle(service); service = NULL;
+        // if (hDriver) UnloadDriver();
+        if (service)
+        {
+            ::CloseServiceHandle(service);
+            service = NULL;
         }
-        if (scm) {
+        if (scm)
+        {
             // Optionally unload driver
             // UnloadDriver();
             // Don't uninstall driver, you may need reboot before you can install it again
             // UnInstallDriver();
-            ::CloseServiceHandle(scm); scm = NULL;
+            ::CloseServiceHandle(scm);
+            scm = NULL;
         }
     }
 
-    const char * GetDriverName() {            // get name of driver
+    const char* GetDriverName() // get name of driver
+    {
         return DriverFileName;
     }
 
-    int LoadDriver() {                        // load MSRDriver
+    int LoadDriver() // load MSRDriver
+    {
         int r = 0, e = 0;
         // open driver service
         r = OpenDriver();
-        if (r == 1060) {
+        if (r == 1060) // ERROR_SERVICE_DOES_NOT_EXIST
+        {
             // Driver not installed. Install it
             e = InstallDriver();
-            if (e) return e;
+            if (e)
+                return e;
             r = OpenDriver();
         }
-        if (r) {
+        if (r)
+        {
             printf("\nError %i loading driver\n", r);
             return r;
         }
 
         // Start the service
         r = ::StartService(service, 0, NULL);
-        if (r == 0) {
+        if (r == 0)
+        {
             e = ::GetLastError();
-            switch (e) {
+            switch (e)
+            {
             case ERROR_PATH_NOT_FOUND:
                 printf("\nDriver file %s path not found (please try to uninstall and reinstall)\n", DriverFileNameE);
                 break;
 
-            case ERROR_FILE_NOT_FOUND:  // .sys file not found
+            case ERROR_FILE_NOT_FOUND: // .sys file not found
                 printf("\nDriver file %s not found\n", DriverFileNameE);
                 break;
 
-            case 577:
+            case 577: // ERROR_INVALID_IMAGE_HASH
                 // driver not signed (Vista and Windows 7)
-                printf("\nThe driver %s is not signed by Microsoft\nPlease press F8 during boot and select 'Disable Driver Signature Enforcement'\n", DriverFileNameE);
+                printf("\nThe driver %s is not signed by Microsoft\nPlease press F8 during boot and select 'Disable "
+                       "Driver Signature Enforcement'\n",
+                    DriverFileNameE);
                 break;
 
-            case 1056:
+            case 1056: // ERROR_SERVICE_ALREADY_RUNNING
                 // Driver already loaded. Ignore
-                //printf("\nDriver already loaded\n");
+                // printf("\nDriver already loaded\n");
                 e = 0;
                 break;
 
-            case 1058:
+            case 1058: // ERROR_SERVICE_DISABLED
                 printf("\nError: Driver disabled\n");
                 break;
 
@@ -361,12 +405,13 @@ public:
                 printf("\nCannot load driver %s\nError no. %i", DriverFileNameE, e);
             }
         }
-        if (e == 0) {
+        if (e == 0)
+        {
             // Get handle to driver
-            hDriver = ::CreateFile(DriverSymbolicName, GENERIC_READ + GENERIC_WRITE,
-                0, NULL, OPEN_EXISTING, 0, NULL);
+            hDriver = ::CreateFile(DriverSymbolicName, GENERIC_READ + GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 
-            if(hDriver == NULL || hDriver == INVALID_HANDLE_VALUE) {
+            if (hDriver == NULL || hDriver == INVALID_HANDLE_VALUE)
+            {
                 hDriver = NULL;
                 e = ::GetLastError();
                 printf("\nCannot load driver\nError no. %i", e);
@@ -375,15 +420,20 @@ public:
         return e;
     }
 
-    int UnloadDriver() {                      // unload MSRDriver
+    int UnloadDriver() // unload MSRDriver
+    {
         int r = 0, e = 0;
-        if(GetScm() == NULL) {
+        if (GetScm() == NULL)
+        {
             return -6;
         }
 
-        if (hDriver) {
-            r = ::CloseHandle(hDriver); hDriver = NULL;
-            if (r == 0) {
+        if (hDriver)
+        {
+            r = ::CloseHandle(hDriver);
+            hDriver = NULL;
+            if (r == 0)
+            {
                 e = ::GetLastError();
                 printf("\nCannot close driver handle\nError no. %i", e);
                 return e;
@@ -391,15 +441,19 @@ public:
             printf("\nUnloading driver");
         }
 
-        if (service) {
+        if (service)
+        {
             SERVICE_STATUS ss;
             r = ::ControlService(service, SERVICE_CONTROL_STOP, &ss);
-            if (r == 0) {
+            if (r == 0)
+            {
                 e = ::GetLastError();
-                if (e == 1062) {
+                if (e == 1062)
+                {
                     printf("\nDriver not active\n");
                 }
-                else {
+                else
+                {
                     printf("\nCannot close driver\nError no. %i", e);
                 }
                 return e;
@@ -409,55 +463,66 @@ public:
     }
 
 protected:
-    int InstallDriver() {                     // install MSRDriver
-        // install MSRDriver
+    int InstallDriver() // install MSRDriver
+    {
         int e = 0;
-        if(GetScm() == NULL) return -1;
+        if (GetScm() == NULL)
+            return -1;
 
         // Install driver in database
-        service = ::CreateService(scm, DriverFileNameE, "MSR driver",
-            SERVICE_START + SERVICE_STOP + DELETE, SERVICE_KERNEL_DRIVER,
-            SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, DriverFilePath,
-            NULL, NULL, NULL, NULL, NULL);
+        service = ::CreateService(scm, DriverFileNameE, "MSR driver", SERVICE_START + SERVICE_STOP + DELETE,
+            SERVICE_KERNEL_DRIVER, SERVICE_DEMAND_START, SERVICE_ERROR_IGNORE, DriverFilePath, NULL, NULL, NULL, NULL,
+            NULL);
 
-        if(service == NULL) {
+        if (service == NULL)
+        {
             e = ::GetLastError();
             printf("\nCannot install driver %s\nError no. %i", DriverFileNameE, e);
         }
-        else {
+        else
+        {
             printf("\nFirst time: Installing driver %s\n", DriverFileNameE);
         }
         return e;
     }
 
-    int UnInstallDriver() {                   // uninstall MSRDriver
-        // uninstall MSRDriver
+    int UnInstallDriver() // uninstall MSRDriver
+    {
         int r = 0, e = 0;
         GetScm();
-        if (service == 0) {
+        if (service == 0)
+        {
             service = ::OpenService(scm, DriverFileNameE, SERVICE_ALL_ACCESS);
         }
-        if(service == 0) {
+        if (service == 0)
+        {
             e = ::GetLastError();
-            if (e == 1060) {
+            if (e == 1060) // ERROR_SERVICE_DOES_NOT_EXIST
+            {
                 printf("\nDriver %s already uninstalled or never installed\n", DriverFileNameE);
             }
-            else {
+            else
+            {
                 printf("\nCannot open service, failed to uninstall driver %s\nError no. %i", DriverFileNameE, e);
             }
         }
-        else {
+        else
+        {
             r = ::DeleteService(service);
-            if (r == 0) {
+            if (r == 0)
+            {
                 e = ::GetLastError();
                 printf("\nFailed to uninstall driver %s\nError no. %i", DriverFileNameE, e);
-                if (e == 1072) printf("\nDriver already marked for deletion\n");
+                if (e == 1072)
+                    printf("\nDriver already marked for deletion\n");
             }
-            else {
+            else
+            {
                 printf("\nUninstalling driver %s\n", DriverFileNameE);
             }
             r = ::CloseServiceHandle(service);
-            if (r == 0) {
+            if (r == 0)
+            {
                 e = ::GetLastError();
                 printf("\nCannot close service\nError no. %i", e);
             }
@@ -466,44 +531,52 @@ protected:
         return e;
     }
 
-    SC_HANDLE GetScm() {                      // Make scm handle
-        // Make scm handle
-        if (scm) return scm;  // handle already made
+    SC_HANDLE GetScm() // Make scm handle
+    {
+        if (scm)
+            return scm; // handle already made
 
         // Open connection to Windows Service Control Manager (SCM)
         scm = ::OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
-        if(scm == NULL) {
+        if (scm == NULL)
+        {
             int e = ::GetLastError();
-            if (e == ERROR_ACCESS_DENIED) {
+            if (e == ERROR_ACCESS_DENIED)
+            {
                 printf("\nAccess denied. Please run as administrator\n");
             }
-            else if (e == 120) {  // function not implemented
+            else if (e == 120)
+            { // function not implemented
                 printf("\nFunction not implemented on this operating system. Windows 2000 or later required.\n");
             }
-            else {
+            else
+            {
                 printf("\nCannot load Windows Service Control Manager\nError no. %i", e);
             }
         }
         return scm;
     }
 
-    int OpenDriver() {                        // open driver service
-        // open driver service
+    int OpenDriver() // open driver service
+    {
         int e;
         // Open a service handle if not already open
-        if (service == 0) {
+        if (service == 0)
+        {
             service = ::OpenService(GetScm(), DriverFileNameE, SERVICE_ALL_ACCESS);
         }
-        if(service == 0) {
+        if (service == 0)
+        {
             e = ::GetLastError();
 
-            switch (e) { // Any other error than driver not installed
-            case 1060: // Driver not installed. Install it
+            switch (e)
+            {          // Any other error than driver not installed
+            case 1060: // ERROR_SERVICE_DOES_NOT_EXIST, Driver not installed. Install it
                 break;
-            case 6:    // access denied
+            case 6: // access denied
                 printf("\nAccess denied\n");
                 break;
-            default:  // Any other error
+            default: // Any other error
                 printf("\nCannot open service, failed to load driver %s\nError no. %i", DriverFileNameE, e);
             }
             return e;
@@ -511,10 +584,10 @@ protected:
         return 0;
     }
 
-    typedef BOOL (WINAPI *LPFN_ISWOW64PROCESS) (HANDLE, PBOOL);
+    typedef BOOL(WINAPI* LPFN_ISWOW64PROCESS)(HANDLE, PBOOL);
 
-    int Need64BitDriver() {                   // tell whether we need 32 bit or 64 bit driver
-        // Tell whether we need 32 bit or 64 bit driver.
+    int Need64BitDriver() // tell whether we need 32 bit or 64 bit driver
+    {
         // Return value:
         // 0: running in 32 bits Windows
         // 1: running 32 bits mode in 64 bits Windows
@@ -523,11 +596,12 @@ protected:
         return 2;
 #else
         LPFN_ISWOW64PROCESS fnIsWow64Process =
-            (LPFN_ISWOW64PROCESS)GetProcAddress(
-            GetModuleHandle("kernel32"),"IsWow64Process");
-        if (fnIsWow64Process) {
+            (LPFN_ISWOW64PROCESS)GetProcAddress(GetModuleHandle("kernel32"), "IsWow64Process");
+        if (fnIsWow64Process)
+        {
             BOOL bIsWow64 = FALSE;
-            if (!fnIsWow64Process(GetCurrentProcess(),&bIsWow64)) {
+            if (!fnIsWow64Process(GetCurrentProcess(), &bIsWow64))
+            {
                 return 0;
             }
             return bIsWow64;
@@ -538,21 +612,23 @@ protected:
 
 public:
     // send commands to driver to read or write MSR registers
-    int AccessRegisters(void * pnIn, int nInLen, void * pnOut, int nOutLen) {
-        if (nInLen <= 0) return 0;
+    int AccessRegisters(void* pnIn, int nInLen, void* pnOut, int nOutLen)
+    {
+        if (nInLen <= 0)
+            return 0;
 
-        const int DeviceType = 0x22;        // FILE_DEVICE_UNKNOWN;
+        const int DeviceType = 0x22; // FILE_DEVICE_UNKNOWN;
         const int Function = 0x800;
-        const int Method = 0;               // METHOD_BUFFERED;
-        const int Access = 1 | 2;           // FILE_READ_ACCESS | FILE_WRITE_ACCESS;
+        const int Method = 0;     // METHOD_BUFFERED;
+        const int Access = 1 | 2; // FILE_READ_ACCESS | FILE_WRITE_ACCESS;
         const int IOCTL_MSR_DRIVER = DeviceType << 16 | Access << 14 | Function << 2 | Method;
 
         DWORD len = 0;
 
-        // This call results in a call to the driver rutine DispatchControl()
-        int res = ::DeviceIoControl(hDriver, IOCTL_MSR_DRIVER, pnIn, nInLen,
-            pnOut, nOutLen, &len, NULL);
-        if (!res) {
+        // This call results in a call to the driver routine DispatchControl()
+        int res = ::DeviceIoControl(hDriver, IOCTL_MSR_DRIVER, pnIn, nInLen, pnOut, nOutLen, &len, NULL);
+        if (!res)
+        {
             // Error
             int e = GetLastError();
             printf("\nCan't access driver. error %i", e);
@@ -560,9 +636,11 @@ public:
         }
 
         // Check return error codes from driver
-        SMSRInOut * outp = (SMSRInOut*)pnOut;
-        for (int i = 0; i < nOutLen/(INT)sizeof(SMSRInOut); i++) {
-            if (outp[i].msr_command == PROC_SET && outp[i].val[0]) {
+        SMSRInOut* outp = (SMSRInOut*)pnOut;
+        for (int i = 0; i < nOutLen / (INT)sizeof(SMSRInOut); i++)
+        {
+            if (outp[i].msr_command == PROC_SET && outp[i].val[0])
+            {
                 printf("\nSetting processor number in driver failed, error 0x%X", outp[i].val[0]);
             }
         }
@@ -570,52 +648,59 @@ public:
     }
 
     // send commands to driver to read or write MSR registers
-    int AccessRegisters(CMSRInOutQue & q) {
+    int AccessRegisters(CMSRInOutQue& q)
+    {
         // Number of bytes in/out
         int n = q.GetSize() * sizeof(SMSRInOut);
-        if (n <= 0) return 0;
+        if (n <= 0)
+            return 0;
         return AccessRegisters(q.queue, n, q.queue, n);
     }
 
-
     // read performance monitor counter
     // send command to driver to read one MSR register
-    int64 MSRRead(int r) {
+    int64 MSRRead(int r)
+    {
         SMSRInOut a;
         a.msr_command = MSR_READ;
         a.register_number = r;
         a.value = 0;
-        AccessRegisters(&a,sizeof(a),&a,sizeof(a));
+        AccessRegisters(&a, sizeof(a), &a, sizeof(a));
         return a.val[0];
     }
 
     // send command to driver to write one MSR register
-    int MSRWrite(int r, int64 val) {
+    int MSRWrite(int r, int64 val)
+    {
         SMSRInOut a;
         a.msr_command = MSR_WRITE;
         a.register_number = r;
         a.value = val;
-        return AccessRegisters(&a,sizeof(a),&a,sizeof(a));
+        return AccessRegisters(&a, sizeof(a), &a, sizeof(a));
     }
 
     // send command to driver to read one control register, cr0 or cr4
-    size_t CRRead(int r) {
-        if (r != 0 && r != 4) return -11;
+    size_t CRRead(int r)
+    {
+        if (r != 0 && r != 4)
+            return -11;
         SMSRInOut a;
         a.msr_command = CR_READ;
         a.register_number = r;
         a.value = 0;
-        AccessRegisters(&a,sizeof(a),&a,sizeof(a));
+        AccessRegisters(&a, sizeof(a), &a, sizeof(a));
         return size_t(a.value);
     }
 
     // send command to driver to write one control register, cr0 or cr4
-    int CRWrite(int r, size_t val) {
-        if (r != 0 && r != 4) return -12;
+    int CRWrite(int r, size_t val)
+    {
+        if (r != 0 && r != 4)
+            return -12;
         SMSRInOut a;
         a.msr_command = CR_WRITE;
         a.register_number = r;
         a.value = val;
-        return AccessRegisters(&a,sizeof(a),&a,sizeof(a));
+        return AccessRegisters(&a, sizeof(a), &a, sizeof(a));
     }
 };

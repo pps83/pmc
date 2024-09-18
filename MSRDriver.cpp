@@ -13,40 +13,36 @@
 ; © 2005 - 2012 GNU General Public License www.gnu.org/licenses
 ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::*/
 
-#if defined(_WIN64)          // Definitions added
+#if defined(_WIN64) // Definitions added
 #define _AMD64_ 1
 #else
 #define _X86_ 1
 #endif
 
-#include <ntddk.h>           // Windows driver kit
-#include <intrin.h>          //#include "intrin1.h"         // Intrinsic functions
-#include "MSRDriver.h"       // Structures shared with calling program
+#include <ntddk.h>     // Windows driver kit
+#include <intrin.h>    //#include "intrin1.h"         // Intrinsic functions
+#include "MSRDriver.h" // Structures shared with calling program
 
 // Define 32/64 bit integer
 #ifndef _SIZE_T_DEFINED
-#ifdef  _WIN64
+#ifdef _WIN64
 typedef unsigned long long size_t;
 #else
-typedef unsigned int     size_t;
+typedef unsigned int size_t;
 #endif
 #define _SIZE_T_DEFINED
 #endif
 
 // Functions defined below
-extern "C" size_t ReadCR(int r);                 // read control register
-extern "C" void WriteCR(int r, size_t value);    // write control register
+extern "C" size_t ReadCR(int r);              // read control register
+extern "C" void WriteCR(int r, size_t value); // write control register
 
+UNICODE_STRING g_usDeviceName = {40, 42, L"\\Device\\devMSRDriver"};
 
+UNICODE_STRING g_usSymbolicLinkName = {30, 32, L"\\??\\slMSRDriver"};
 
-UNICODE_STRING g_usDeviceName = {
-    40, 42, L"\\Device\\devMSRDriver"};
-
-UNICODE_STRING  g_usSymbolicLinkName = {
-    30, 32, L"\\??\\slMSRDriver"};
-
-
-NTSTATUS DispatchCreateClose(IN PDEVICE_OBJECT /*DeviceObject*/, IN PIRP  Irp) {
+NTSTATUS DispatchCreateClose(IN PDEVICE_OBJECT /*DeviceObject*/, IN PIRP Irp)
+{
     // CreateFile was called, to get device handle or
     // CloseHandle was called, to close device handle
     // In both cases we are in user process context here
@@ -57,27 +53,29 @@ NTSTATUS DispatchCreateClose(IN PDEVICE_OBJECT /*DeviceObject*/, IN PIRP  Irp) {
     return STATUS_SUCCESS;
 }
 
-
-NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp) {
+NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp)
+{
     // DeviceIoControl was called
     // We are in user process context here
 
     NTSTATUS status = STATUS_SUCCESS;
     ULONG dwInArrSize;
     ULONG dwOutArrSize;
-    int i=0, n1, n2=0, reg;
+    int i = 0, n1, n2 = 0, reg;
     EMSR_COMMAND command;
     long long InValue, OutValue;
-    union {
-        size_t val;  // value of cr4 register, 32 or 64 bits
-        int lo;      // low 32 bits of value
+    union
+    {
+        size_t val; // value of cr4 register, 32 or 64 bits
+        int lo;     // low 32 bits of value
     } cr4val;
 
     PIO_STACK_LOCATION pIOStack = IoGetCurrentIrpStackLocation(pIrp);
 
-#define IOCTL_MSR_DRIVER  CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_READ_ACCESS + FILE_WRITE_ACCESS)
+#define IOCTL_MSR_DRIVER CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_READ_ACCESS + FILE_WRITE_ACCESS)
 
-    if (pIOStack->Parameters.DeviceIoControl.IoControlCode == IOCTL_MSR_DRIVER) {
+    if (pIOStack->Parameters.DeviceIoControl.IoControlCode == IOCTL_MSR_DRIVER)
+    {
         // the I/O control code is ours
 
         // get input array size
@@ -87,14 +85,15 @@ NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp) {
         dwOutArrSize = pIOStack->Parameters.DeviceIoControl.OutputBufferLength;
 
         // get pointer to input/output array
-        SMSRInOut * pInOut = (SMSRInOut*)pIrp->AssociatedIrp.SystemBuffer;
+        SMSRInOut* pInOut = (SMSRInOut*)pIrp->AssociatedIrp.SystemBuffer;
 
         // number of input and output records
-        n1 = dwInArrSize  / sizeof(SMSRInOut);
+        n1 = dwInArrSize / sizeof(SMSRInOut);
         n2 = dwOutArrSize / sizeof(SMSRInOut);
 
         // command loop
-        for (i = 0; i < n1; i++, pInOut++) {
+        for (i = 0; i < n1; i++, pInOut++)
+        {
 
             // get command
             command = pInOut->msr_command;
@@ -105,52 +104,56 @@ NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp) {
             OutValue = 0;
 
             // dispatch command
-            switch (command) {
+            switch (command)
+            {
 
-            case MSR_IGNORE:    // do nothing
+            case MSR_IGNORE: // do nothing
                 break;
 
-            case MSR_STOP:      // stop loop
-                i = n1; break;
+            case MSR_STOP: // stop loop
+                i = n1;
+                break;
 
-            case MSR_READ:      // read model-specific register
+            case MSR_READ: // read model-specific register
                 OutValue = __readmsr(reg);
                 break;
 
-            case MSR_WRITE:     // write model-specific register
+            case MSR_WRITE: // write model-specific register
                 __writemsr(reg, InValue);
                 break;
 
-            case CR_READ:       // read control register
+            case CR_READ: // read control register
                 OutValue = (long long)ReadCR(reg);
                 break;
 
-            case CR_WRITE:      // write control register
+            case CR_WRITE: // write control register
                 WriteCR(reg, (size_t)InValue);
                 break;
 
-            case PMC_ENABLE:    // Enable RDPMC and RDTSC instructions
-                cr4val.val = __readcr4();  // Read CR4
-                cr4val.lo |= 0x100;        // Enable RDPMC
-                cr4val.lo &= ~4;           // Enable RDTSC
-                __writecr4(cr4val.val);    // Write CR4
+            case PMC_ENABLE:              // Enable RDPMC and RDTSC instructions
+                cr4val.val = __readcr4(); // Read CR4
+                cr4val.lo |= 0x100;       // Enable RDPMC
+                cr4val.lo &= ~4;          // Enable RDTSC
+                __writecr4(cr4val.val);   // Write CR4
                 break;
 
-            case PMC_DISABLE:   // Disable RDPMC instruction (RDTSC remains enabled)
-                cr4val.val = __readcr4();  // Read CR4
-                cr4val.lo &= ~0x100;       // Disable RDPMC
-                //cr4val.lo |= 4;          // Disable RDTSC
-                __writecr4(cr4val.val);    // Write CR4
+            case PMC_DISABLE:             // Disable RDPMC instruction (RDTSC remains enabled)
+                cr4val.val = __readcr4(); // Read CR4
+                cr4val.lo &= ~0x100;      // Disable RDPMC
+                // cr4val.lo |= 4;          // Disable RDTSC
+                __writecr4(cr4val.val); // Write CR4
                 break;
 
-            case PROC_GET:      // Which processor number am I running on (in multiprocessor system)
+            case PROC_GET: // Which processor number am I running on (in multiprocessor system)
                 OutValue = KeGetCurrentProcessorNumber();
                 break;
 
-            case PROC_SET: {    // Fix to certain processor number (in multiprocessor system)
+            case PROC_SET:
+            { // Fix to certain processor number (in multiprocessor system)
                 size_t affinity = (size_t)1 << InValue;
                 OutValue = ZwSetInformationThread(ZwCurrentThread(), ThreadAffinityMask, &affinity, sizeof(affinity));
-                break;}
+                break;
+            }
 
             default: // unknown command
                 status = STATUS_INVALID_DEVICE_REQUEST;
@@ -158,24 +161,29 @@ NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp) {
             }
 
             // save data
-            if (i < n2) {
+            if (i < n2)
+            {
                 pInOut->value = OutValue;
             }
-            else {
-                if (command == MSR_READ || command == CR_READ) {
+            else
+            {
+                if (command == MSR_READ || command == CR_READ)
+                {
                     status = STATUS_BUFFER_TOO_SMALL;
                 }
             }
         }
     }
-    else {
+    else
+    {
         status = STATUS_INVALID_DEVICE_REQUEST;
     }
 
     pIrp->IoStatus.Status = status;
 
     // number of bytes returned
-    if (i > n2) i = n2;
+    if (i > n2)
+        i = n2;
     pIrp->IoStatus.Information = (ULONG_PTR)(i * sizeof(SMSRInOut));
 
     IoCompleteRequest(pIrp, IO_NO_INCREMENT);
@@ -183,16 +191,16 @@ NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp) {
     return status;
 }
 
-
-void DriverUnload (PDRIVER_OBJECT pDriverObject) {
+void DriverUnload(PDRIVER_OBJECT pDriverObject)
+{
     // ControlService,,SERVICE_CONTROL_STOP was called
     // We are in System process (pid = 8) context here
-    IoDeleteSymbolicLink (&g_usSymbolicLinkName);
-    IoDeleteDevice (pDriverObject->DeviceObject);
+    IoDeleteSymbolicLink(&g_usSymbolicLinkName);
+    IoDeleteDevice(pDriverObject->DeviceObject);
 }
 
-extern "C"
-NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING /*pusRegistryPath*/) {
+extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING /*pusRegistryPath*/)
+{
     // StartService was called
     // We are in System process (pid = 8) context here
 
@@ -202,13 +210,15 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING /*pusRegistry
     status = STATUS_DEVICE_CONFIGURATION_ERROR;
 
     // Register device (in this case it's virtual)
-    s2 = IoCreateDevice (pDriverObject, 0, &g_usDeviceName, FILE_DEVICE_UNKNOWN, 0, false, &pDeviceObject);
+    s2 = IoCreateDevice(pDriverObject, 0, &g_usDeviceName, FILE_DEVICE_UNKNOWN, 0, false, &pDeviceObject);
 
-    if (s2 == STATUS_SUCCESS) {
+    if (s2 == STATUS_SUCCESS)
+    {
 
-        s2 = IoCreateSymbolicLink (&g_usSymbolicLinkName, &g_usDeviceName);
+        s2 = IoCreateSymbolicLink(&g_usSymbolicLinkName, &g_usDeviceName);
 
-        if (s2 == STATUS_SUCCESS) {
+        if (s2 == STATUS_SUCCESS)
+        {
 
             // Announce dispatch routines
             pDriverObject->DriverUnload = DriverUnload;
@@ -218,17 +228,19 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING /*pusRegistry
 
             status = STATUS_SUCCESS;
         }
-        else {
-            IoDeleteDevice (pDeviceObject);
+        else
+        {
+            IoDeleteDevice(pDeviceObject);
         }
     }
     return status;
 }
 
-
 // read control register
-size_t ReadCR(int r){
-    switch (r) {
+size_t ReadCR(int r)
+{
+    switch (r)
+    {
     case 0:
         return __readcr0();
     case 2:
@@ -246,9 +258,11 @@ size_t ReadCR(int r){
     return 0;
 };
 
-void WriteCR(int r, size_t value) {
+void WriteCR(int r, size_t value)
+{
     // write control register
-    switch (r) {
+    switch (r)
+    {
     case 0:
         __writecr0(value);
         break;
@@ -263,7 +277,6 @@ void WriteCR(int r, size_t value) {
         __writecr8(value);
         break;
 #endif
-    default:
-        ; // wrong value. ignore
+    default:; // wrong value. ignore
     }
 }
