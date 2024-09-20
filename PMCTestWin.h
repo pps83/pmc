@@ -612,7 +612,7 @@ protected:
 
 public:
     // send commands to driver to read or write MSR registers
-    int AccessRegisters(void* pnIn, int nInLen, void* pnOut, int nOutLen)
+    int AccessRegisters(SMSRInOut* pnIn, int nInLen, SMSRInOut* pnOut, int nOutLen)
     {
         if (nInLen <= 0)
             return 0;
@@ -626,7 +626,8 @@ public:
         DWORD len = 0;
 
         // This call results in a call to the driver routine DispatchControl()
-        int res = ::DeviceIoControl(hDriver, IOCTL_MSR_DRIVER, pnIn, nInLen, pnOut, nOutLen, &len, NULL);
+        int res = ::DeviceIoControl(
+            hDriver, IOCTL_MSR_DRIVER, pnIn, nInLen * sizeof(*pnIn), pnOut, nOutLen * sizeof(*pnOut), &len, NULL);
         if (!res)
         {
             // Error
@@ -636,22 +637,26 @@ public:
         }
 
         // Check return error codes from driver
-        SMSRInOut* outp = (SMSRInOut*)pnOut;
-        for (int i = 0; i < nOutLen / (INT)sizeof(SMSRInOut); i++)
+        for (int i = 0; i < nOutLen; i++)
         {
-            if (outp[i].msr_command == PROC_SET && outp[i].val[0])
+            if (pnOut[i].msr_command == PROC_SET && pnOut[i].val[0])
             {
-                printf("\nSetting processor number in driver failed, error 0x%X", outp[i].val[0]);
+                printf("\nSetting processor number in driver failed, error 0x%X", pnOut[i].val[0]);
             }
         }
         return 0;
+    }
+
+    int AccessRegisters(SMSRInOut& q)
+    {
+        return AccessRegisters(&q, 1, &q, 1);
     }
 
     // send commands to driver to read or write MSR registers
     int AccessRegisters(CMSRInOutQue& q)
     {
         // Number of bytes in/out
-        int n = q.GetSize() * sizeof(SMSRInOut);
+        int n = q.GetSize();
         if (n <= 0)
             return 0;
         return AccessRegisters(q.queue, n, q.queue, n);
@@ -665,7 +670,7 @@ public:
         a.msr_command = MSR_READ;
         a.register_number = r;
         a.value = 0;
-        AccessRegisters(&a, sizeof(a), &a, sizeof(a));
+        AccessRegisters(a);
         return a.val[0];
     }
 
@@ -676,7 +681,7 @@ public:
         a.msr_command = MSR_WRITE;
         a.register_number = r;
         a.value = val;
-        return AccessRegisters(&a, sizeof(a), &a, sizeof(a));
+        return AccessRegisters(a);
     }
 
     // send command to driver to read one control register, cr0 or cr4
@@ -688,7 +693,7 @@ public:
         a.msr_command = CR_READ;
         a.register_number = r;
         a.value = 0;
-        AccessRegisters(&a, sizeof(a), &a, sizeof(a));
+        AccessRegisters(a);
         return size_t(a.value);
     }
 
@@ -701,6 +706,6 @@ public:
         a.msr_command = CR_WRITE;
         a.register_number = r;
         a.value = val;
-        return AccessRegisters(&a, sizeof(a), &a, sizeof(a));
+        return AccessRegisters(a);
     }
 };
