@@ -17,6 +17,10 @@
 #ifndef __CYGWIN__
 #include <conio.h>
 #endif
+#include "DriverWrapper.h"
+#include "PMCTest.h"
+
+#define USE_DRIVERWRAPPER 1
 
 // comment out next line if compiler doesn't support intrinsic functions:
 // #include <intrin.h>
@@ -291,6 +295,27 @@ protected:
 
 class CMSRDriver
 {
+#if USE_DRIVERWRAPPER
+private:
+    DriverWrapper impl;
+    HANDLE hDriver;
+
+public:
+    CMSRDriver()
+        : impl(DriverWrapper::IsWow64() ? "MSRDriver64.sys" : "MSRDriver32.sys", "\\\\.\\slMSRDriver")
+        , hDriver(NULL)
+    {
+    }
+
+    int LoadDriver()
+    {
+        int r = impl.open();
+        if (r)
+            hDriver = impl.io();
+        return r ? 0 : 1;
+    }
+
+#else
 protected:
     SC_HANDLE scm;
     SC_HANDLE service;
@@ -609,6 +634,7 @@ protected:
         return 0;
 #endif
     }
+#endif /* USE_DRIVERWRAPPER */
 
 public:
     // send commands to driver to read or write MSR registers
