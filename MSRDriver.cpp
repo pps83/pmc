@@ -34,18 +34,32 @@ typedef unsigned int size_t;
 #endif
 
 // Functions defined below
-extern "C" size_t ReadCR(int r);              // read control register
-extern "C" void WriteCR(int r, size_t value); // write control register
+static size_t ReadCR(int r);              // read control register
+static void WriteCR(int r, size_t value); // write control register
 
 UNICODE_STRING g_usDeviceName = {40, 42, L"\\Device\\devMSRDriver"};
 
 UNICODE_STRING g_usSymbolicLinkName = {30, 32, L"\\??\\slMSRDriver"};
+
+static ULONG g_refCount = (ULONG)-1;
 
 NTSTATUS DispatchCreateClose(IN PDEVICE_OBJECT /*DeviceObject*/, IN PIRP Irp)
 {
     // CreateFile was called, to get device handle or
     // CloseHandle was called, to close device handle
     // In both cases we are in user process context here
+
+    PIO_STACK_LOCATION pIrpStack = IoGetCurrentIrpStackLocation(Irp);
+    if (pIrpStack->MajorFunction == IRP_MJ_CREATE)
+    {
+        if (g_refCount != (ULONG)-1)
+            g_refCount++;
+    }
+    else if (pIrpStack->MajorFunction == IRP_MJ_CLOSE)
+    {
+        if (g_refCount != (ULONG)-1)
+            g_refCount--;
+    }
 
     Irp->IoStatus.Status = STATUS_SUCCESS;
     Irp->IoStatus.Information = 0;
@@ -73,6 +87,17 @@ NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp)
     PIO_STACK_LOCATION pIOStack = IoGetCurrentIrpStackLocation(pIrp);
 
 #define IOCTL_MSR_DRIVER CTL_CODE(FILE_DEVICE_UNKNOWN, 0x800, METHOD_BUFFERED, FILE_READ_ACCESS + FILE_WRITE_ACCESS)
+#define IOCTL_MSR_GET_REFCOUNT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+    if (pIOStack->Parameters.DeviceIoControl.IoControlCode == IOCTL_MSR_GET_REFCOUNT)
+    {
+        *(PULONG)pIrp->AssociatedIrp.SystemBuffer = g_refCount;
+        pIrp->IoStatus.Information = sizeof(g_refCount);
+        status = STATUS_SUCCESS;
+        pIrp->IoStatus.Status = status;
+        IoCompleteRequest(pIrp, IO_NO_INCREMENT);
+        return status;
+    }
 
     if (pIOStack->Parameters.DeviceIoControl.IoControlCode == IOCTL_MSR_DRIVER)
     {
@@ -94,7 +119,6 @@ NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp)
         // command loop
         for (i = 0; i < n1; i++, pInOut++)
         {
-
             // get command
             command = pInOut->msr_command;
             // get register number
@@ -106,7 +130,6 @@ NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp)
             // dispatch command
             switch (command)
             {
-
             case MSR_IGNORE: // do nothing
                 break;
 
@@ -140,8 +163,8 @@ NTSTATUS DispatchControl(IN PDEVICE_OBJECT /*pDeviceObject*/, IN PIRP pIrp)
             case PMC_DISABLE:             // Disable RDPMC instruction (RDTSC remains enabled)
                 cr4val.val = __readcr4(); // Read CR4
                 cr4val.lo &= ~0x100;      // Disable RDPMC
-                // cr4val.lo |= 4;          // Disable RDTSC
-                __writecr4(cr4val.val); // Write CR4
+                // cr4val.lo |= 4;        // Disable RDTSC
+                __writecr4(cr4val.val);   // Write CR4
                 break;
 
             case PROC_GET: // Which processor number am I running on (in multiprocessor system)
@@ -203,7 +226,7 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING /*
 {
     // StartService was called
     // We are in System process (pid = 8) context here
-
+    g_refCount = (ULONG)-1;
     NTSTATUS status, s2;
     PDEVICE_OBJECT pDeviceObject;
 
@@ -214,7 +237,7 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING /*
 
     if (s2 == STATUS_SUCCESS)
     {
-
+        g_refCount = 0;
         s2 = IoCreateSymbolicLink(&g_usSymbolicLinkName, &g_usDeviceName);
 
         if (s2 == STATUS_SUCCESS)
@@ -237,7 +260,7 @@ extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT pDriverObject, PUNICODE_STRING /*
 }
 
 // read control register
-size_t ReadCR(int r)
+static size_t ReadCR(int r)
 {
     switch (r)
     {
@@ -258,7 +281,7 @@ size_t ReadCR(int r)
     return 0;
 };
 
-void WriteCR(int r, size_t value)
+static void WriteCR(int r, size_t value)
 {
     // write control register
     switch (r)
