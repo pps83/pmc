@@ -15,6 +15,7 @@
 
 #define IOCTL_MSR_GET_REFCOUNT CTL_CODE(FILE_DEVICE_UNKNOWN, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
+static bool g_adminCopyInitRunning = false; // flags that DriverWrapper::adminCopyInit is running
 static bool g_adminCopyInitTested = DriverWrapper::adminCopyInit();
 
 DriverWrapper::DriverWrapper(const char* driverFileName1, const char* driverIoFileName1, const char* serviceName1)
@@ -39,19 +40,23 @@ DriverWrapper::~DriverWrapper()
 int DriverWrapper::open()
 {
     bool loaded = false;
-    if (ioHandle == INVALID_HANDLE_VALUE && !initDll)
+    if (ioHandle != INVALID_HANDLE_VALUE && initDll)
+        return 1;
+    bool startAdminCopyTried = false;
+    for (int i = 0; i < 4; i++) // Retry, Max 1000ms
     {
-        bool startAdminCopyTried = false;
-        // Retry, Max 1000ms
-        for (int i = 0; i < 4; i++)
+        unsigned ret = Initialize(startAdminCopyTried, loaded);
+        if (ret == DW_DLL_NO_ERROR)
+            break;
+        else if (ret == ERROR_INVALID_IMAGE_HASH)
         {
-            DWORD dllStatus = Initialize(startAdminCopyTried, loaded);
-            if (dllStatus == DW_DLL_NO_ERROR)
-                break;
-            Sleep(100 * i);
+            printf("The driver %s is not signed by Microsoft\n'Disable Driver Signature Enforcement' during boot!\n",
+                driverFileName.c_str());
+            break;
         }
-        initDll = true;
+        Sleep(100 * i);
     }
+    initDll = true;
     return ioHandle != INVALID_HANDLE_VALUE ? (loaded ? 2 : 1) : 0;
 }
 
@@ -171,6 +176,8 @@ static BOOL StartDriver(SC_HANDLE hSCManager, const char* DriverId)
             error = GetLastError();
             if (error == ERROR_SERVICE_ALREADY_RUNNING)
                 rCode = TRUE;
+            if (error == ERROR_INVALID_IMAGE_HASH && g_adminCopyInitRunning)
+                ExitProcess(ERROR_INVALID_IMAGE_HASH);
         }
         else
         {
@@ -354,7 +361,7 @@ static bool startAdminCopy()
 }
 
 static bool installAsAdmin(const std::string& driverFileName, const std::string& driverIoFileName,
-    const std::string& serviceName, const std::wstring& driverFilePath)
+    const std::string& serviceName, const std::wstring& driverFilePath, HANDLE& childProcess)
 {
     std::wstring cmdline = g_installCmdParam;
     addCmdlineParam(cmdline, L"FileName", std::wstring(driverFileName.begin(), driverFileName.end()));
@@ -367,8 +374,8 @@ static bool installAsAdmin(const std::string& driverFileName, const std::string&
 
     SHELLEXECUTEINFOW sei = {0};
     sei.cbSize = sizeof(SHELLEXECUTEINFO);
-    sei.fMask = /*SEE_MASK_NOCLOSEPROCESS |*/ SEE_MASK_FLAG_NO_UI; // SEE_MASK_DEFAULT | SEE_MASK_NOASYNC;
-    sei.lpVerb = L"runas";                                         // Run as administrator
+    sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_FLAG_NO_UI | SEE_MASK_NOASYNC;
+    sei.lpVerb = L"runas"; // Run as administrator
     sei.lpFile = path;
     sei.lpParameters = cmdline.c_str();
     sei.nShow = SW_HIDE;
@@ -377,6 +384,7 @@ static bool installAsAdmin(const std::string& driverFileName, const std::string&
     if (TRUE != ret && GetLastError() != ERROR_CANCELLED)
         throw std::system_error(std::error_code(GetLastError(), std::system_category()), "Exception occurred");
 #endif
+    childProcess = sei.hProcess;
     return !!ret;
 }
 
@@ -421,12 +429,33 @@ unsigned DriverWrapper::Initialize(bool& startAdminCopyTried, bool& loadedDriver
             if (isLeftCtrlPressed() || startAdminCopy())
             {
                 // run adminCopyInit from admin account
-                bool ret = installAsAdmin(driverFileName, driverIoFileName, serviceName, driverFilePath);
+                HANDLE childProcess = NULL;
+                bool ret = installAsAdmin(driverFileName, driverIoFileName, serviceName, driverFilePath, childProcess);
                 for (int i = 0; i < (ret ? 1000 : 10); ++i)
                 {
                     if (OpenDriver())
+                    {
+                        if (childProcess != NULL)
+                        {
+                            CloseHandle(childProcess);
+                            childProcess = NULL;
+                        }
                         return DW_DLL_NO_ERROR;
+                    }
+                    DWORD exitCode;
+                    if (childProcess != NULL && GetExitCodeProcess(childProcess, &exitCode) && exitCode != STILL_ACTIVE)
+                    {
+                        CloseHandle(childProcess);
+                        childProcess = NULL;
+                        if (exitCode == ERROR_INVALID_IMAGE_HASH)
+                            return ERROR_INVALID_IMAGE_HASH;
+                    }
                     Sleep(10);
+                }
+                if (childProcess != NULL)
+                {
+                    CloseHandle(childProcess);
+                    childProcess = NULL;
                 }
             }
         }
@@ -434,8 +463,9 @@ unsigned DriverWrapper::Initialize(bool& startAdminCopyTried, bool& loadedDriver
         ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_REMOVE);
         if (!ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_INSTALL))
         {
+            bool invalidImageError = GetLastError() == ERROR_INVALID_IMAGE_HASH;
             ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_REMOVE);
-            return DW_DLL_DRIVER_NOT_LOADED;
+            return invalidImageError ? ERROR_INVALID_IMAGE_HASH : DW_DLL_DRIVER_NOT_LOADED;
         }
 
         if (OpenDriver())
@@ -548,6 +578,7 @@ static std::string w2a(const std::wstring& s)
 
 bool DriverWrapper::adminCopyInit()
 {
+    g_adminCopyInitRunning = true;
     STARTUPINFO si;
     GetStartupInfo(&si);
     bool isGui = true; // si.dwFlags& STARTF_USESHOWWINDOW;
@@ -599,5 +630,6 @@ bool DriverWrapper::adminCopyInit()
         ExitProcess(0);
         return true;
     }
+    g_adminCopyInitRunning = false;
     return false;
 }
