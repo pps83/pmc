@@ -650,52 +650,43 @@ void CCounters::CleanUp()
     // msr.UnInstallDriver();
 }
 
-// put record into multiple start queues
+static void putImpl(CMSRInOutQue* queue, int num_threads, EMSR_COMMAND msr_command, unsigned int register_number,
+    unsigned int value_lo, unsigned int value_hi)
+{
+    for (int t = 0; t < num_threads; t++)
+        queue[t].put(msr_command, register_number, value_lo, value_hi);
+}
+
 void CCounters::Put1(int num_threads, EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo,
     unsigned int value_hi)
 {
-    for (int t = 0; t < num_threads; t++)
-    {
-        queue1[t].put(msr_command, register_number, value_lo, value_hi);
-    }
+    putImpl(queue1, num_threads, msr_command, register_number, value_lo, value_hi);
 }
 
-// put record into multiple stop queues
 void CCounters::Put2(int num_threads, EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo,
     unsigned int value_hi)
 {
-    for (int t = 0; t < num_threads; t++)
-    {
-        queue2[t].put(msr_command, register_number, value_lo, value_hi);
-    }
+    putImpl(queue2, num_threads, msr_command, register_number, value_lo, value_hi);
 }
 
-// get value from previous MSR_READ command in queue1
+static long long readImpl(CMSRInOutQue* queue, unsigned int register_number, int thread)
+{
+    for (int i = 0; i < queue[thread].GetSize(); i++)
+    {
+        if (queue[thread].queue[i].msr_command == MSR_READ && queue[thread].queue[i].register_number == register_number)
+            return queue[thread].queue[i].value;
+    }
+    return 0; // not found
+}
+
 long long CCounters::read1(unsigned int register_number, int thread)
 {
-    for (int i = 0; i < queue1[thread].GetSize(); i++)
-    {
-        if (queue1[thread].queue[i].msr_command == MSR_READ &&
-            queue1[thread].queue[i].register_number == register_number)
-        {
-            return queue1[thread].queue[i].value;
-        }
-    }
-    return 0; // not found
+    return readImpl(queue1, register_number, thread);
 }
 
-// get value from previous MSR_READ command in queue1
 long long CCounters::read2(unsigned int register_number, int thread)
 {
-    for (int i = 0; i < queue2[thread].GetSize(); i++)
-    {
-        if (queue2[thread].queue[i].msr_command == MSR_READ &&
-            queue2[thread].queue[i].register_number == register_number)
-        {
-            return queue2[thread].queue[i].value;
-        }
-    }
-    return 0; // not found
+    return readImpl(queue2, register_number, thread);
 }
 
 // Start counting
