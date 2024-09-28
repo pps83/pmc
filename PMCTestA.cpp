@@ -690,7 +690,7 @@ long long CCounters::read2(unsigned int register_number, int thread)
     for (int i = 0; i < queue2[thread].GetSize(); i++)
     {
         if (queue2[thread].queue[i].msr_command == MSR_READ &&
-            queue1[thread].queue[i].register_number == register_number)
+            queue2[thread].queue[i].register_number == register_number)
         {
             return queue2[thread].queue[i].value;
         }
