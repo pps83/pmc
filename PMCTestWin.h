@@ -31,7 +31,7 @@
 //
 //////////////////////////////////////////////////////////////////////////////
 
-#ifdef __CYGWIN__
+#ifndef _MSC_VER
 // Define macro for aligned structure, gcc syntax
 #define ALIGNEDSTRUCTURE(Name, Align) struct __attribute__((aligned(Align))) Name
 #else
@@ -39,8 +39,7 @@
 #define ALIGNEDSTRUCTURE(Name, Align) __declspec(align(Align)) struct Name
 #endif
 
-// Define low level functions
-#ifdef __INTRIN_H_ // Use intrinsics for low level functions
+#ifdef _MSC_VER // Use intrinsics for low level functions
 
 static inline void Serialize()
 {
@@ -54,8 +53,7 @@ static inline void Serialize()
 #define Readtsc __rdtsc
 #define Readpmc __readpmc
 
-#elif defined(__CYGWIN__) // use gcc style inline assembly
-// This version is for gas/AT&T syntax
+#else // This version is for gas/AT&T syntax
 
 static void Cpuid(int Output[4], int aa)
 {
@@ -88,55 +86,7 @@ static inline int Readpmc(int nPerfCtr)
     __asm__ __volatile__("rdpmc" : "=a"(r) : "c"(nPerfCtr) : "%edx");
     return r;
 }
-
-#else // Intrinsics not supported, use inline assembly
-// This version is for 32-bit, MASM syntax
-
-static void Cpuid(int output[4], int functionnumber)
-{
-    __asm {
-        mov eax, functionnumber;
-        cpuid;
-        mov esi, output;
-        mov [esi],    eax;
-        mov [esi+4],  ebx;
-        mov [esi+8],  ecx;
-        mov [esi+12], edx;
-    }
-}
-
-static inline void Serialize()
-{
-    // serialize CPU
-    __asm {
-        xor eax, eax
-            cpuid
-    }
-    // Note: ebx is changed by cpuid.
-    // The compiler will save ebx automatically in most cases, but bugs have been observed.
-}
-
-#pragma warning(disable : 4035)
-static inline int Readtsc()
-{
-    // read performance monitor counter number nPerfCtr
-    __asm {
-        rdtsc
-    }
-}
-
-static inline int Readpmc(int nPerfCtr)
-{
-    // read performance monitor counter number nPerfCtr
-    __asm {
-        mov ecx, nPerfCtr
-            rdpmc
-    }
-}
-
-#pragma warning(default : 4035)
-
-#endif // __INTRIN_H_
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -273,4 +223,3 @@ protected:
     HANDLE hThreads[MAXTHREADS];
     int ThreadData[MAXTHREADS];
 };
-
