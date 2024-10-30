@@ -16,8 +16,6 @@ extern int EventRegistersUsed[MAXCOUNTERS];     // index of counter registers us
 extern int Counters[MAXCOUNTERS];               // PMC register numbers
 }
 
-extern CCounters MSRCounters;
-
 extern int ProcNum[];
 extern double clockFactor[];
 extern int diagnostics;
@@ -158,8 +156,8 @@ void CCounters::CleanUp()
         if (MScheme == S_AMD2)
         {
             long long tscount, corecount;
-            tscount = MSRCounters.read2(rTSCounter, thread) - MSRCounters.read1(rTSCounter, thread);
-            corecount = MSRCounters.read2(rCoreCounter, thread) - MSRCounters.read1(rCoreCounter, thread);
+            tscount = read2(rTSCounter, thread) - read1(rTSCounter, thread);
+            corecount = read2(rCoreCounter, thread) - read1(rCoreCounter, thread);
             clockFactor[thread] = double(corecount) / double(tscount);
         }
         else
