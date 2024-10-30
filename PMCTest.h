@@ -17,24 +17,10 @@
 #include "CCounters.h"
 #include "PMCTestWin.h"
 
-// maximum number of repetitions
-const int MAXREPEAT = 128;
-
-
 extern "C"
 {
+int TestLoop(int thread); // The basic test loop containing the code to test
 
-// Link to PMCTestB.cpp, PMCTestB32.asm or PMCTestB64.asm:
-// The basic test loop containing the code to test
-int TestLoop(int thread); // test loop
-}
-
-//////////////////////////////////////////////////////////////////////////////
-//    Global variables imported from PMCTestBxx module
-//////////////////////////////////////////////////////////////////////////////
-
-extern "C"
-{
 extern int NumThreads; // number of threads
 // performance counters used
 extern int NumCounters;                      // Number of PMC counters defined Counters[]
