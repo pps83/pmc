@@ -20,7 +20,9 @@
 #endif
 
 #include <ntddk.h>     // Windows driver kit
-#include <intrin.h>    //#include "intrin1.h"         // Intrinsic functions
+#ifdef _MSC_VER
+#include <intrin.h>    // Intrinsic functions
+#endif
 #include "MSRDriver.h" // Structures shared with calling program
 
 // Define 32/64 bit integer

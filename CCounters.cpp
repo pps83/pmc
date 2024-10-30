@@ -1,5 +1,7 @@
 #include "CCounters.h"
+#ifdef _MSC_VER
 #include <intrin.h>
+#endif
 
 extern "C"
 {
