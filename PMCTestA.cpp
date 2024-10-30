@@ -62,16 +62,14 @@ CCounters MSRCounters;
 //
 //////////////////////////////////////////////////////////////////////
 
-ThreadProcedureDeclaration(ThreadProc1)
+void ThreadProc1(void* parm)
 {
-    // DWORD WINAPI ThreadProc1(LPVOID parm) {
     //  check thread number
     unsigned int threadnum = *(unsigned int*)parm;
 
     if (threadnum >= (unsigned int)NumThreads)
     {
         printf("\nThread number out of range %i", threadnum);
-        return 0;
     }
 
     // get desired processornumber
@@ -107,9 +105,7 @@ ThreadProcedureDeclaration(ThreadProc1)
 
     // Start MSR counters
     MSRCounters.StopCounters(threadnum);
-
-    return 0;
-};
+}
 
 //////////////////////////////////////////////////////////////////////
 //

@@ -80,10 +80,7 @@ static inline int Readpmc(int nPerfCtr)
 //
 //////////////////////////////////////////////////////////////////////////////
 
-// Function declaration for thread procedure
-#define ThreadProcedureDeclaration(Name) extern "C" DWORD WINAPI Name(LPVOID parm)
-
-ThreadProcedureDeclaration(ThreadProc1);
+void ThreadProc1(void* parm);
 
 namespace SyS
 { // system-specific process and thread functions
@@ -170,7 +167,7 @@ public:
             // create and start thread
             hThreads[t] = CreateThread(NULL, // default security attributes
                 ThreadStackSize,             // stack size
-                ThreadProc1,                 // thread function name
+                ThreadEntry,                 // thread function name
                 &ThreadData[t],              // argument to thread function
                 0,                           // use default creation flags
                 NULL);
@@ -182,7 +179,7 @@ public:
         // last thread = this thread
         t = NumThreads - 1;
         ThreadData[t] = t;
-        ThreadProc1(&ThreadData[t]);
+        ThreadEntry(&ThreadData[t]);
     }
 
     void Stop()
@@ -208,4 +205,11 @@ protected:
     int NumThreads;
     HANDLE hThreads[MAXTHREADS];
     int ThreadData[MAXTHREADS];
+
+private:
+    static DWORD WINAPI ThreadEntry(LPVOID parm)
+    {
+        ThreadProc1(parm);
+        return 0;
+    }
 };
