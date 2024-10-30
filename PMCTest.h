@@ -13,28 +13,19 @@
 //////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "MSRDriver.h"
+#include "CCounters.h"
+#include "PMCTestWin.h"
+
 // maximum number of threads. Must be 4 or 8.
-#if defined(_M_X64) || defined(__x86_64__) || defined(__amd64)
+#if defined(_M_X64) || defined(__x86_64__)
 #define MAXTHREADS 8
 #else
 #define MAXTHREADS 4
 #endif
 
-#include "MSRDriver.h"
-#include "CCounters.h"
-
 // maximum number of repetitions
 const int MAXREPEAT = 128;
-
-#if defined(__WINDOWS__) || defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
-// System-specific definitions for Windows
-#include "PMCTestWin.h"
-#elif defined(__unix__) || defined(__linux__)
-// System-specific definitions for Linux
-#include "PMCTestLinux.h"
-#else
-#error Unknown platform
-#endif
 
 
 extern "C"
@@ -51,9 +42,6 @@ int TestLoop(int thread); // test loop
 
 extern "C"
 {
-
-extern SCounterDefinition CounterDefinitions[]; // List of all possible counters, in PMCTestA.cpp
-
 extern int NumThreads; // number of threads
 // performance counters used
 extern int NumCounters;                      // Number of PMC counters defined Counters[]
