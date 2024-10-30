@@ -143,11 +143,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CCounters.cpp" />
     <ClCompile Include="DriverWrapper.cpp" />
     <ClCompile Include="PMCTestA.cpp" />
     <ClCompile Include="PMCTestB.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CCounters.h" />
     <ClInclude Include="DriverWrapper.h" />
     <ClInclude Include="MSRDriver.h" />
     <ClInclude Include="PMCTest.h" />

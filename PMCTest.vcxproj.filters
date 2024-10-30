@@ -24,6 +24,9 @@
     <ClCompile Include="DriverWrapper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="CCounters.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="PMCTest.h">
@@ -36,6 +39,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DriverWrapper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CCounters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
