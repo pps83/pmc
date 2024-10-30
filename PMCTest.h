@@ -17,13 +17,6 @@
 #include "CCounters.h"
 #include "PMCTestWin.h"
 
-// maximum number of threads. Must be 4 or 8.
-#if defined(_M_X64) || defined(__x86_64__)
-#define MAXTHREADS 8
-#else
-#define MAXTHREADS 4
-#endif
-
 // maximum number of repetitions
 const int MAXREPEAT = 128;
 

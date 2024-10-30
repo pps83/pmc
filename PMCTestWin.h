@@ -17,13 +17,16 @@
 #ifndef __CYGWIN__
 #include <conio.h>
 #endif
-#include "PMCTest.h"
-
-// comment out next line if compiler doesn't support intrinsic functions:
-// #include <intrin.h>
 
 #if defined(_WIN64) && !defined(__CYGWIN__)
 #include <intrin.h>
+#endif
+
+// maximum number of threads. Must be 4 or 8.
+#if defined(_M_X64) || defined(__x86_64__)
+#define MAXTHREADS 8
+#else
+#define MAXTHREADS 4
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
