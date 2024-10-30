@@ -3,6 +3,7 @@
 #include "DriverWrapper.h"
 #include <windows.h>
 #include <winsvc.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #define USE_DRIVERWRAPPER 1
@@ -12,10 +13,6 @@ const int MAXCOUNTERS = 8;
 
 // max name length of counters
 const int COUNTERNAMELEN = 10;
-
-// define 64 bit integer
-typedef __int64 int64;
-typedef unsigned __int64 uint64;
 
 // codes for processor vendor
 enum EProcVendor
@@ -518,7 +515,7 @@ public:
 
     // read performance monitor counter
     // send command to driver to read one MSR register
-    int64 MSRRead(int r)
+    int64_t MSRRead(int r)
     {
         SMSRInOut a;
         a.msr_command = MSR_READ;
@@ -529,7 +526,7 @@ public:
     }
 
     // send command to driver to write one MSR register
-    int MSRWrite(int r, int64 val)
+    int MSRWrite(int r, int64_t val)
     {
         SMSRInOut a;
         a.msr_command = MSR_WRITE;

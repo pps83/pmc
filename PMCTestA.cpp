@@ -36,7 +36,7 @@ int diagnostics = 0; // 1 for output of CPU model and PMC scheme
 union USync
 {
 #if MAXTHREADS > 4
-    int64 allflags; // for MAXTHREADS = 8
+    int64_t allflags; // for MAXTHREADS = 8
 #else
     int allflags; // for MAXTHREADS = 4
 #endif
@@ -437,7 +437,7 @@ int main(int argc, char* argv[])
                 union
                 {
                     int* pi;
-                    int64* pl;
+                    int64_t* pl;
                     float* pf;
                     double* pd;
                 } pu;
