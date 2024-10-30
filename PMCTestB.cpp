@@ -49,6 +49,12 @@
 // Cache line size (for preventing threads using same cache lines)
 #define CACHELINESIZE 64
 
+#ifndef _MSC_VER
+#define ALIGNEDSTRUCTURE(Name, Align) struct __attribute__((aligned(Align))) Name
+#else
+#define ALIGNEDSTRUCTURE(Name, Align) __declspec(align(Align)) struct Name
+#endif
+
 /*############################################################################
 #
 #        list of desired counter types

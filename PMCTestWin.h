@@ -25,20 +25,6 @@
 #define MAXTHREADS 4
 #endif
 
-//////////////////////////////////////////////////////////////////////////////
-//
-//  Definitions due to different compiler syntax
-//
-//////////////////////////////////////////////////////////////////////////////
-
-#ifndef _MSC_VER
-// Define macro for aligned structure, gcc syntax
-#define ALIGNEDSTRUCTURE(Name, Align) struct __attribute__((aligned(Align))) Name
-#else
-// Define macro for aligned structure, MS Visual Studio syntax
-#define ALIGNEDSTRUCTURE(Name, Align) __declspec(align(Align)) struct Name
-#endif
-
 #ifdef _MSC_VER // Use intrinsics for low level functions
 
 static inline void Serialize()
