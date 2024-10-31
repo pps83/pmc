@@ -91,7 +91,6 @@ ALIGNEDSTRUCTURE(SThreadData, CACHELINESIZE)
 };
 
 SThreadData ThreadData[NUM_THREADS];      // Results for all threads
-int NumThreads = NUM_THREADS;             // Number of threads
 int NumCounters = 0;                      // Number of valid PMC counters in Counters[]
 int MaxNumCounters = MAXCOUNTERS;         // Maximum number of PMC counters
 int UsePMC = USE_PERFORMANCE_COUNTERS;    // 0 if no PMC counters used

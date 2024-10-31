@@ -3,7 +3,6 @@
 #include <intrin.h>
 #endif
 
-extern int NumThreads; // number of threads
 // performance counters used
 extern int NumCounters;                         // Number of PMC counters defined Counters[]
 extern int UsePMC;                              // 0 if no PMC counters used
@@ -636,7 +635,7 @@ void CCounters::QueueCounters()
             // which is only accessible in the driver.
             // Read TSC and APERF in the driver before and after the test.
             // This value is used for adjusting the clock count
-            for (int thread = 0; thread < NumThreads; thread++)
+            int thread = 0;
             {
                 queue1[thread].put(MSR_READ, rTSCounter, thread);
                 queue1[thread].put(MSR_READ, rCoreCounter, thread);
@@ -656,7 +655,7 @@ void CCounters::LockProcessor()
     int thread, procnum;
 
     // We must lock the driver call to the desired processor number
-    for (thread = 0; thread < NumThreads; thread++)
+    thread = 0;
     {
         procnum = ProcNum[thread];
         if (procnum >= 0)
@@ -693,7 +692,7 @@ void CCounters::CleanUp()
     // Things to do after measuring
 
     // Calculate clock correction factors for AMD Zen
-    for (int thread = 0; thread < NumThreads; thread++)
+    int thread = 0;
     {
         if (MScheme == S_AMD2)
         {
@@ -1150,10 +1149,10 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
         a = CDef.Event | (CDef.EventMask << 6);
         if (counternr == 1)
             a = EventRegistersUsed[0] | (a << 16);
-        Put1(NumThreads, MSR_WRITE, 0x11, a);
-        Put2(NumThreads, MSR_WRITE, 0x11, 0);
-        Put1(NumThreads, MSR_WRITE, 0x12 + counternr, 0);
-        Put2(NumThreads, MSR_WRITE, 0x12 + counternr, 0);
+        Put1(1, MSR_WRITE, 0x11, a);
+        Put2(1, MSR_WRITE, 0x11, 0);
+        Put1(1, MSR_WRITE, 0x12 + counternr, 0);
+        Put2(1, MSR_WRITE, 0x12 + counternr, 0);
         EventRegistersUsed[0] = a;
         break;
 
@@ -1174,8 +1173,8 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
                     a |= b << (4 * i);
                 }
                 // Set MSR_PERF_FIXED_CTR_CTRL
-                Put1(NumThreads, MSR_WRITE, 0x38D, a);
-                Put2(NumThreads, MSR_WRITE, 0x38D, 0);
+                Put1(1, MSR_WRITE, 0x38D, a);
+                Put2(1, MSR_WRITE, 0x38D, 0);
             }
             break;
         }
@@ -1185,8 +1184,8 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
             a = (1 << NumPMCs) - 1;      // one bit for each pmc counter
             b = (1 << NumFixedPMCs) - 1; // one bit for each fixed counter
             // set MSR_PERF_GLOBAL_CTRL
-            Put1(NumThreads, MSR_WRITE, 0x38F, a, b);
-            Put2(NumThreads, MSR_WRITE, 0x38F, 0);
+            Put1(1, MSR_WRITE, 0x38F, a, b);
+            Put2(1, MSR_WRITE, 0x38F, 0);
         }
         // All other counters continue in next case:
 
@@ -1201,10 +1200,10 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
 
         eventreg = 0x186 + counternr; // IA32_PERFEVTSEL0,1,..
         reg = 0xc1 + counternr;       // IA32_PMC0,1,..
-        Put1(NumThreads, MSR_WRITE, eventreg, a);
-        Put2(NumThreads, MSR_WRITE, eventreg, 0);
-        Put1(NumThreads, MSR_WRITE, reg, 0);
-        Put2(NumThreads, MSR_WRITE, reg, 0);
+        Put1(1, MSR_WRITE, eventreg, a);
+        Put2(1, MSR_WRITE, eventreg, 0);
+        Put1(1, MSR_WRITE, reg, 0);
+        Put2(1, MSR_WRITE, reg, 0);
         break;
 
     case S_P4:
@@ -1213,19 +1212,19 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
         eventreg = GetP4EventSelectRegAddress(counternr, CDef.EventSelectReg);
         tag = 1;
         a = 0x1C | (tag << 5) | (CDef.EventMask << 9) | (CDef.Event << 25);
-        Put1(NumThreads, MSR_WRITE, eventreg, a);
-        Put2(NumThreads, MSR_WRITE, eventreg, 0);
+        Put1(1, MSR_WRITE, eventreg, a);
+        Put2(1, MSR_WRITE, eventreg, 0);
         // Remember this event register is used
         EventRegistersUsed[NumCounters] = eventreg;
         // CCCR register
         reg = counternr + 0x360;
         a = (1 << 12) | (3 << 16) | (CDef.EventSelectReg << 13);
-        Put1(NumThreads, MSR_WRITE, reg, a);
-        Put2(NumThreads, MSR_WRITE, reg, 0);
+        Put1(1, MSR_WRITE, reg, a);
+        Put2(1, MSR_WRITE, reg, 0);
         // Reset counter register
         reg = counternr + 0x300;
-        Put1(NumThreads, MSR_WRITE, reg, 0);
-        Put2(NumThreads, MSR_WRITE, reg, 0);
+        Put1(1, MSR_WRITE, reg, 0);
+        Put2(1, MSR_WRITE, reg, 0);
         // Set high bit for fast readpmc
         counternr |= 0x80000000;
         break;
@@ -1235,18 +1234,18 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
         a = CDef.Event | (CDef.EventMask << 8) | (1 << 16) | (1 << 22);
         eventreg = 0xc0010000 + counternr;
         reg = 0xc0010004 + counternr;
-        Put1(NumThreads, MSR_WRITE, eventreg, a);
-        Put2(NumThreads, MSR_WRITE, eventreg, 0);
-        Put1(NumThreads, MSR_WRITE, reg, 0);
-        Put2(NumThreads, MSR_WRITE, reg, 0);
+        Put1(1, MSR_WRITE, eventreg, a);
+        Put2(1, MSR_WRITE, eventreg, 0);
+        Put1(1, MSR_WRITE, reg, 0);
+        Put2(1, MSR_WRITE, reg, 0);
         break;
 
     case S_AMD2:
         // AMD Zen
         reg = 0xC0010200 + counternr * 2;
         b = CDef.Event | (CDef.EventMask << 8) | (1 << 16) | (1 << 22);
-        Put1(NumThreads, MSR_WRITE, reg, b);
-        Put2(NumThreads, MSR_WRITE, reg, 0);
+        Put1(1, MSR_WRITE, reg, b);
+        Put2(1, MSR_WRITE, reg, 0);
         break;
 
     case S_VIA:
@@ -1254,10 +1253,10 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
         a = CDef.Event | (1 << 16) | (1 << 22);
         eventreg = 0x186 + counternr;
         reg = 0xc1 + counternr;
-        Put1(NumThreads, MSR_WRITE, eventreg, a);
-        Put2(NumThreads, MSR_WRITE, eventreg, 0);
-        Put1(NumThreads, MSR_WRITE, reg, 0);
-        Put2(NumThreads, MSR_WRITE, reg, 0);
+        Put1(1, MSR_WRITE, eventreg, a);
+        Put2(1, MSR_WRITE, eventreg, 0);
+        Put1(1, MSR_WRITE, reg, 0);
+        Put2(1, MSR_WRITE, reg, 0);
         break;
 
     default:

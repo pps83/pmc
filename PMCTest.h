@@ -19,7 +19,6 @@
 
 int TestLoop(int thread); // The basic test loop containing the code to test
 
-extern int NumThreads; // number of threads
 // performance counters used
 extern int NumCounters;                      // Number of PMC counters defined Counters[]
 extern int MaxNumCounters;                   // Maximum number of PMC counters

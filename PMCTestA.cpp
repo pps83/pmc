@@ -33,19 +33,8 @@ int diagnostics = 0; // 1 for output of CPU model and PMC scheme
 //
 //////////////////////////////////////////////////////////////////////
 
-union USync
-{
-#if MAXTHREADS > 4
-    int64_t allflags; // for MAXTHREADS = 8
-#else
-    int allflags; // for MAXTHREADS = 4
-#endif
-    char flag[MAXTHREADS];
-};
-volatile USync TSync = {0};
-
 // processornumber for each thread
-int ProcNum[MAXTHREADS + 64] = {0};
+int ProcNum[1] = {0};
 
 // clock correction factor for AMD Zen processor
 double clockFactor[MAXTHREADS] = {0};
@@ -62,15 +51,10 @@ CCounters MSRCounters;
 //
 //////////////////////////////////////////////////////////////////////
 
-void ThreadProc1(void* parm)
+void ThreadProc1()
 {
     //  check thread number
-    unsigned int threadnum = *(unsigned int*)parm;
-
-    if (threadnum >= (unsigned int)NumThreads)
-    {
-        printf("\nThread number out of range %i", threadnum);
-    }
+    unsigned int threadnum = 0;
 
     // get desired processornumber
     int ProcessorNumber = ProcNum[threadnum];
@@ -83,19 +67,6 @@ void ThreadProc1(void* parm)
 
     // Wait for rest of timeslice
     SyS::Sleep0();
-
-    // wait for other threads
-    // Initialize synchronizer
-    USync WaitTo;
-    WaitTo.allflags = 0;
-    for (int t = 0; t < NumThreads; t++)
-        WaitTo.flag[t] = 1;
-    // flag for this thead ready
-    TSync.flag[threadnum] = 1;
-    // wait for other threads to be ready
-    while (TSync.allflags != WaitTo.allflags) // Note: will wait forever if a thread is not created
-    {
-    }
 
     // Run the test code
     repetitions = TestLoop(threadnum);
@@ -146,7 +117,7 @@ int setcounters(int argc, char* argv[])
     SyS::ProcMaskType ProcessAffMask = SyS::GetProcessMask();
 
     // find all possible CPU cores
-    NumThreads = (int)sizeof(void*) * 8;
+    int NumThreads = (int)sizeof(void*) * 8;
     if (NumThreads > 64)
         NumThreads = 64;
 
@@ -252,15 +223,6 @@ int main(int argc, char* argv[])
         }
     }
 
-    // Limit number of threads
-    if (NumThreads > MAXTHREADS)
-    {
-        NumThreads = MAXTHREADS;
-        printf("\nToo many threads");
-    }
-    if (NumThreads < 1)
-        NumThreads = 1;
-
     // Get mask of possible CPU cores
     SyS::ProcMaskType ProcessAffMask = SyS::GetProcessMask();
     // Count possible threads
@@ -278,7 +240,7 @@ int main(int argc, char* argv[])
     while (!SyS::TestProcessMask(proc0, &ProcessAffMask))
         proc0++; // check if proc0 is available
 
-    for (t = 0, i = NumThreads - 1; t < NumThreads; t++, i--)
+    t = 0; i = 0;
     {
         // make processornumbers different, and last thread = MainThreadProcNum:
         // ProcNum[t] = MainThreadProcNum ^ i;
@@ -319,12 +281,7 @@ int main(int argc, char* argv[])
     // Set high priority to minimize risk of interrupts during test
     SyS::SetProcessPriorityHigh();
 
-    // Make multiple threads
-    ThreadHandler Threads;
-    Threads.Start(NumThreads);
-
-    // Stop threads
-    Threads.Stop();
+    ThreadProc1();
 
     // Set priority back normal
     SyS::SetProcessPriorityNormal();
@@ -333,7 +290,7 @@ int main(int argc, char* argv[])
     MSRCounters.CleanUp();
 
     // Print results
-    for (t = 0; t < NumThreads; t++)
+    t = 0;
     {
         // calculate offsets into ThreadData[]
         int TOffset = t * (ThreadDataSize / sizeof(int));
@@ -341,8 +298,6 @@ int main(int argc, char* argv[])
         int PMCOS = PMCResultsOS / sizeof(int);
 
         // print column headings
-        if (NumThreads > 1)
-            printf("\nProcessor %i", ProcNum[t]);
         printf("\n     Clock ");
         if (UsePMC)
         {
