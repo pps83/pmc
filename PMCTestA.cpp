@@ -88,14 +88,19 @@ int main(int argc, char* argv[])
     // Make program and driver use the same processor number
     MSRCounters.LockProcessor();
 
-    // Find counter defitions and put them in queue for driver
+    // Find counter definitions and put them in queue for driver
     MSRCounters.QueueCounters();
 
     if (diagnostics)
         return 0; // just return CPU info, don't run test
 
     // Install and load driver
-    MSRCounters.StartDriver();
+    int err = MSRCounters.StartDriver();
+    if (err)
+    {
+        printf("Error: failed to load driver\n");
+        return 1;
+    }
 
     // Set high priority to minimize risk of interrupts during test
     SyS::SetProcessPriorityHigh();
