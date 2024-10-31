@@ -95,7 +95,7 @@ public:
     // list of entries
     SMSRInOut queue[MAX_QUE_ENTRIES + 1];
     // get size of queue
-    int GetSize()
+    int GetSize() const
     {
         return n;
     }
@@ -248,33 +248,32 @@ public:
     void LockProcessor();                                      // Make program and driver use the same processor number
     void QueueCounters();                                      // Put counter definitions in queue
     int StartDriver();                                         // Install and load driver
-    void StartCounters(int ThreadNum);                         // start counting
-    void StopCounters(int ThreadNum);                          // stop and reset counters
+    void StartCounters();                                      // start counting
+    void StopCounters();                                       // stop and reset counters
     void CleanUp();                                            // Any required cleanup of driver etc
     CMSRDriver msr;                                            // interface to MSR access driver
     char* CounterNames[MAXCOUNTERS];                           // name of each counter
-    void Put1(int num_threads,                                 // put record into multiple start queues
+    void Put1(                                                 // put record into multiple start queues
         EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi = 0);
-    void Put2(int num_threads, // put record into multiple stop queues
+    void Put2(                                                 // put record into multiple stop queues
         EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi = 0);
     void GetProcessorVendor();                                 // get microprocessor vendor
     void GetProcessorFamily();                                 // get microprocessor family
     void GetPMCScheme();                                       // get PMC scheme
-    long long read1(unsigned int register_number, int thread); // get value from previous MSR_READ command in queue1
-    long long read2(unsigned int register_number, int thread); // get value from previous MSR_READ command in queue2
+    long long read1(unsigned int register_number);             // get value from previous MSR_READ command in queue1
+    long long read2(unsigned int register_number);             // get value from previous MSR_READ command in queue2
     // protected:
     EProcVendor MVendor; // microprocessor vendor
     EProcFamily MFamily; // microprocessor type and family
     EPMCScheme MScheme;  // PMC monitoring scheme
 protected:
-    CMSRInOutQue queue1[64]; // que of MSR commands to do by StartCounters()
-    CMSRInOutQue queue2[64]; // que of MSR commands to do by StopCounters()
+    CMSRInOutQue queue1; // que of MSR commands to do by StartCounters()
+    CMSRInOutQue queue2; // que of MSR commands to do by StopCounters()
     // translate event select number to register address for P4 processor:
     static int GetP4EventSelectRegAddress(int CounterNr, int EventSelectNo);
     int NumCounterDefinitions; // number of possible counter definitions in table CounterDefinitions
     int NumPMCs;               // Number of general PMCs
     int NumFixedPMCs;          // Number of fixed function PMCs
-    int ProcessorNumber;       // main thread processor number in multiprocessor systems
     unsigned int rTSCounter;   // PMC register number of time stamp counter in S_AMD2 scheme
     unsigned int rCoreCounter; // PMC register number of core clock counter in S_AMD2 scheme
 };

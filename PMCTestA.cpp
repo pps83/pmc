@@ -37,7 +37,7 @@ int diagnostics = 0; // 1 for output of CPU model and PMC scheme
 int ProcNum[1] = {0};
 
 // clock correction factor for AMD Zen processor
-double clockFactor[MAXTHREADS] = {0};
+double clockFactor = 0;
 
 // number of repetitions in each thread
 int repetitions;
@@ -63,7 +63,7 @@ void ThreadProc1()
     SyS::SetProcessMask(ProcessorNumber);
 
     // Start MSR counters
-    MSRCounters.StartCounters(threadnum);
+    MSRCounters.StartCounters();
 
     // Wait for rest of timeslice
     SyS::Sleep0();
@@ -75,7 +75,7 @@ void ThreadProc1()
     SyS::Sleep0();
 
     // Start MSR counters
-    MSRCounters.StopCounters(threadnum);
+    MSRCounters.StopCounters();
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -162,11 +162,11 @@ int setcounters(int argc, char* argv[])
 
             if (command == 1)
             {
-                MSRCounters.StartCounters(thread);
+                MSRCounters.StartCounters();
             }
             else
             {
-                MSRCounters.StopCounters(thread);
+                MSRCounters.StopCounters();
             }
         }
     }
@@ -290,10 +290,9 @@ int main(int argc, char* argv[])
     MSRCounters.CleanUp();
 
     // Print results
-    t = 0;
     {
         // calculate offsets into ThreadData[]
-        int TOffset = t * (ThreadDataSize / sizeof(int));
+        int TOffset = 0;
         int ClockOS = ClockResultsOS / sizeof(int);
         int PMCOS = PMCResultsOS / sizeof(int);
 
@@ -324,7 +323,7 @@ int main(int argc, char* argv[])
             {
                 if (MSRCounters.MScheme == S_AMD2)
                 {
-                    printf("%10i ", int(tscClock * clockFactor[t] + 0.5)); // Calculated core clock count
+                    printf("%10i ", int(tscClock * clockFactor + 0.5)); // Calculated core clock count
                 }
                 for (i = 0; i < NumCounters; i++)
                 {
@@ -345,7 +344,7 @@ int main(int argc, char* argv[])
                 {
                     a = PThreadData[repi + TOffset + ClockOS];
                     if (MSRCounters.MScheme == S_AMD2)
-                        a = int(a * clockFactor[t] + 0.5); // Calculated core clock count
+                        a = int(a * clockFactor + 0.5); // Calculated core clock count
                 }
                 else if ((unsigned int)RatioOut[1] <= (unsigned int)NumCounters)
                 {
@@ -359,7 +358,7 @@ int main(int argc, char* argv[])
                 {
                     b = PThreadData[repi + TOffset + ClockOS];
                     if (MSRCounters.MScheme == S_AMD2)
-                        b = int(b * clockFactor[t] + 0.5); // Calculated core clock count
+                        b = int(b * clockFactor + 0.5); // Calculated core clock count
                 }
                 else if ((unsigned int)RatioOut[2] <= (unsigned int)NumCounters)
                 {
@@ -416,7 +415,7 @@ int main(int argc, char* argv[])
                     printf("%10.6f", *pu.pd);
                     break;
                 case 8: // float, corrected for clock factor
-                    printf("%10.6f", *pu.pf / clockFactor[t]);
+                    printf("%10.6f", *pu.pf / clockFactor);
                     break;
                 default:
                     printf("unknown TempOut %i", TempOut);
@@ -425,7 +424,7 @@ int main(int argc, char* argv[])
         }
         if (MSRCounters.MScheme == S_AMD2)
         {
-            printf("\nClock factor %.4f", clockFactor[t]);
+            printf("\nClock factor %.4f", clockFactor);
         }
     }
 
