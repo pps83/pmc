@@ -66,15 +66,12 @@
 // The maximum number of counters you can have is MAXCOUNTERS.
 // Insert zeroes if you have less than MAXCOUNTERS counters.
 
-extern "C"
-{
 int CounterTypesDesired[MAXCOUNTERS] = {
     1,   // core clock cycles (Intel Core 2 and later)
     9,   // instructions (not P4)
     100, // micro-operations
     311  // data cache mises
 };
-}
 
 /*############################################################################
 #
@@ -93,8 +90,6 @@ ALIGNEDSTRUCTURE(SThreadData, CACHELINESIZE)
     int PMCResults[REPETITIONS * MAXCOUNTERS]; // PMC count results
 };
 
-extern "C"
-{
 SThreadData ThreadData[NUM_THREADS];      // Results for all threads
 int NumThreads = NUM_THREADS;             // Number of threads
 int NumCounters = 0;                      // Number of valid PMC counters in Counters[]
@@ -114,7 +109,6 @@ int RatioOut[4] = {0};           // See PMCTest.h for explanation
 int TempOut = 0;                 // See PMCTest.h for explanation
 const char* RatioOutTitle = "?"; // Column heading for optional extra output of ratio
 const char* TempOutTitle = "?";  // Column heading for optional arbitrary output
-}
 
 /*############################################################################
 #

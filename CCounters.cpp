@@ -3,8 +3,6 @@
 #include <intrin.h>
 #endif
 
-extern "C"
-{
 extern int NumThreads; // number of threads
 // performance counters used
 extern int NumCounters;                         // Number of PMC counters defined Counters[]
@@ -13,7 +11,6 @@ extern int MaxNumCounters;                      // Maximum number of PMC counter
 extern int CounterTypesDesired[MAXCOUNTERS];    // list of desired counter types
 extern int EventRegistersUsed[MAXCOUNTERS];     // index of counter registers used
 extern int Counters[MAXCOUNTERS];               // PMC register numbers
-}
 
 extern int ProcNum[];
 extern double clockFactor[];

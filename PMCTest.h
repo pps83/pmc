@@ -17,8 +17,6 @@
 #include "CCounters.h"
 #include "PMCTestWin.h"
 
-extern "C"
-{
 int TestLoop(int thread); // The basic test loop containing the code to test
 
 extern int NumThreads; // number of threads
@@ -52,4 +50,3 @@ extern int TempOut;               // Use CountTemp (possibly extended into Count
                                   // 7 = double
 extern const char* RatioOutTitle; // Column heading for optional extra output of ratio
 extern const char* TempOutTitle;  // Column heading for optional arbitrary output
-}
