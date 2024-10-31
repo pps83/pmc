@@ -27,31 +27,19 @@
 
 int diagnostics = 0; // 1 for output of CPU model and PMC scheme
 
-//////////////////////////////////////////////////////////////////////
-//
-//        Thread synchronizer
-//
-//////////////////////////////////////////////////////////////////////
-
 // desired processor number
 int ProcNum0 = 0;
 
 // clock correction factor for AMD Zen processor
 double clockFactor = 0;
 
-// number of repetitions in each thread
+// number of test repetitions
 int repetitions;
 
 // Create CCounters instance
 CCounters MSRCounters;
 
-//////////////////////////////////////////////////////////////////////
-//
-//        Thread procedure
-//
-//////////////////////////////////////////////////////////////////////
-
-void ThreadProc1()
+void TestProc()
 {
     // Lock process to the desired processor number
     SyS::SetProcessMask(ProcNum0);
@@ -255,7 +243,7 @@ int main(int argc, char* argv[])
     // Set high priority to minimize risk of interrupts during test
     SyS::SetProcessPriorityHigh();
 
-    ThreadProc1();
+    TestProc();
 
     // Set priority back normal
     SyS::SetProcessPriorityNormal();

@@ -79,21 +79,20 @@ int CounterTypesDesired[MAXCOUNTERS] = {
 // writing to the same cache line
 ALIGNEDSTRUCTURE(SThreadData, CACHELINESIZE)
 {
-    // Data for each thread
     int CountTemp[MAXCOUNTERS + 1];            // temporary storage of clock counts and PMC counts
     int CountOverhead[MAXCOUNTERS + 1];        // temporary storage of count overhead
     int ClockResults[REPETITIONS];             // clock count results
     int PMCResults[REPETITIONS * MAXCOUNTERS]; // PMC count results
 };
 
-SThreadData ThreadData;                   // Results for all threads
+SThreadData ThreadData;                   // Results
 int NumCounters = 0;                      // Number of valid PMC counters in Counters[]
 int MaxNumCounters = MAXCOUNTERS;         // Maximum number of PMC counters
 int UsePMC = USE_PERFORMANCE_COUNTERS;    // 0 if no PMC counters used
-int* PThreadData = (int*)&ThreadData;     // Pointer to measured data for all threads
-// offset of clock results of first thread into ThreadData (bytes)
+int* PThreadData = (int*)&ThreadData;     // Pointer to measured data
+// offset of clock results into ThreadData (bytes)
 int ClockResultsOS = int(ThreadData.ClockResults - ThreadData.CountTemp) * sizeof(int);
-// offset of PMC results of first thread into ThreadData (bytes)
+// offset of PMC results into ThreadData (bytes)
 int PMCResultsOS = int(ThreadData.PMCResults - ThreadData.CountTemp) * sizeof(int);
 // counter register numbers used
 int Counters[MAXCOUNTERS] = {0};

@@ -27,10 +27,10 @@ extern int CounterTypesDesired[MAXCOUNTERS]; // list of desired counter types
 extern int EventRegistersUsed[MAXCOUNTERS];  // index of counter registers used
 extern int Counters[MAXCOUNTERS];            // PMC register numbers
 
-// count results (all threads)
-extern int* PThreadData;   // Pointer to measured data for all threads
-extern int ClockResultsOS; // offset of clock results of first thread into ThreadData (bytes)
-extern int PMCResultsOS;   // offset of PMC results of first thread into ThreadData (bytes)
+// count results
+extern int* PThreadData;   // Pointer to measured data
+extern int ClockResultsOS; // offset of clock results into ThreadData (bytes)
+extern int PMCResultsOS;   // offset of PMC results into ThreadData (bytes)
 
 // optional extra output of ratio between two performance counts
 extern int RatioOut[4]; // RatioOut[0] = 0: no ratio output, 1 = int, 2 = float

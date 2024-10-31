@@ -74,14 +74,6 @@ static inline int Readpmc(int nPerfCtr)
 }
 #endif
 
-//////////////////////////////////////////////////////////////////////////////
-//
-//  Definitions due to different OS calls
-//
-//////////////////////////////////////////////////////////////////////////////
-
-void ThreadProc1(void* parm);
-
 namespace SyS
 { // system-specific process and thread functions
 
@@ -112,8 +104,6 @@ static inline int TestProcessMask(int p, ProcMaskType* m)
 {
     return ((ProcMaskType)1 << p) & *m;
 }
-
-// MainThreadProcNum = GetCurrentProcessorNumber(); // only available in Vista and above
 
 // Sleep for the rest of current timeslice
 static inline void Sleep0()
