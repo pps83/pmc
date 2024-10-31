@@ -17,7 +17,7 @@
 #include "CCounters.h"
 #include "PMCTestWin.h"
 
-int TestLoop(int thread); // The basic test loop containing the code to test
+int TestLoop(); // The basic test loop containing the code to test
 
 // performance counters used
 extern int NumCounters;                      // Number of PMC counters defined Counters[]
@@ -29,7 +29,6 @@ extern int Counters[MAXCOUNTERS];            // PMC register numbers
 
 // count results (all threads)
 extern int* PThreadData;   // Pointer to measured data for all threads
-extern int ThreadDataSize; // Size of per-thread counter data block (bytes)
 extern int ClockResultsOS; // offset of clock results of first thread into ThreadData (bytes)
 extern int PMCResultsOS;   // offset of PMC results of first thread into ThreadData (bytes)
 

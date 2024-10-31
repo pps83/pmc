@@ -53,9 +53,6 @@ CCounters MSRCounters;
 
 void ThreadProc1()
 {
-    //  check thread number
-    unsigned int threadnum = 0;
-
     // Lock process to the desired processor number
     SyS::SetProcessMask(ProcNum0);
 
@@ -66,7 +63,7 @@ void ThreadProc1()
     SyS::Sleep0();
 
     // Run the test code
-    repetitions = TestLoop(threadnum);
+    repetitions = TestLoop();
 
     // Wait for rest of timeslice
     SyS::Sleep0();
@@ -269,7 +266,6 @@ int main(int argc, char* argv[])
     // Print results
     {
         // calculate offsets into ThreadData[]
-        int TOffset = 0;
         int ClockOS = ClockResultsOS / sizeof(int);
         int PMCOS = PMCResultsOS / sizeof(int);
 
@@ -294,7 +290,7 @@ int main(int argc, char* argv[])
         // print counter outputs
         for (repi = 0; repi < repetitions; repi++)
         {
-            int tscClock = PThreadData[repi + TOffset + ClockOS];
+            int tscClock = PThreadData[repi + ClockOS];
             printf("\n%10i ", tscClock);
             if (UsePMC)
             {
@@ -304,7 +300,7 @@ int main(int argc, char* argv[])
                 }
                 for (int i = 0; i < NumCounters; i++)
                 {
-                    printf("%10i ", PThreadData[repi + i * repetitions + TOffset + PMCOS]);
+                    printf("%10i ", PThreadData[repi + i * repetitions + PMCOS]);
                 }
             }
             // optional ratio output
@@ -319,13 +315,13 @@ int main(int argc, char* argv[])
                 int a, b;
                 if (RatioOut[1] == 0)
                 {
-                    a = PThreadData[repi + TOffset + ClockOS];
+                    a = PThreadData[repi + ClockOS];
                     if (MSRCounters.MScheme == S_AMD2)
                         a = int(a * clockFactor + 0.5); // Calculated core clock count
                 }
                 else if ((unsigned int)RatioOut[1] <= (unsigned int)NumCounters)
                 {
-                    a = PThreadData[repi + (RatioOut[1] - 1) * repetitions + TOffset + PMCOS];
+                    a = PThreadData[repi + (RatioOut[1] - 1) * repetitions + PMCOS];
                 }
                 else
                 {
@@ -333,13 +329,13 @@ int main(int argc, char* argv[])
                 }
                 if (RatioOut[2] == 0)
                 {
-                    b = PThreadData[repi + TOffset + ClockOS];
+                    b = PThreadData[repi + ClockOS];
                     if (MSRCounters.MScheme == S_AMD2)
                         b = int(b * clockFactor + 0.5); // Calculated core clock count
                 }
                 else if ((unsigned int)RatioOut[2] <= (unsigned int)NumCounters)
                 {
-                    b = PThreadData[repi + (RatioOut[2] - 1) * repetitions + TOffset + PMCOS];
+                    b = PThreadData[repi + (RatioOut[2] - 1) * repetitions + PMCOS];
                 }
                 else
                 {
@@ -368,7 +364,7 @@ int main(int argc, char* argv[])
                     float* pf;
                     double* pd;
                 } pu;
-                pu.pi = PThreadData + repi + TOffset; // pointer to CountTemp
+                pu.pi = PThreadData + repi; // pointer to CountTemp
                 if (TempOut & 1)
                     pu.pi += repi; // double size
                 switch (TempOut)
@@ -410,6 +406,5 @@ int main(int argc, char* argv[])
     // printf("\npress any key");
     // getch();
 
-    // Exit
     return 0;
 }
