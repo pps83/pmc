@@ -15,10 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="PMCTestA.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PMCTestB.cpp">
+    <ClCompile Include="PMCTest.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="DriverWrapper.cpp">
@@ -29,13 +26,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="PMCTest.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="MSRDriver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PMCTestWin.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DriverWrapper.h">
