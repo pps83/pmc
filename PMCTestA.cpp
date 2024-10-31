@@ -127,10 +127,6 @@ int main(int argc, char* argv[])
                 printf("%10s ", MSRCounters.CounterNames[i]);
             }
         }
-        if (RatioOut[0])
-            printf("%10s ", RatioOutTitle ? RatioOutTitle : "Ratio");
-        if (TempOut)
-            printf("%10s ", TempOutTitle ? TempOutTitle : "Extra out");
 
         // print counter outputs
         for (int repi = 0; repi < repetitions; repi++)
@@ -146,97 +142,6 @@ int main(int argc, char* argv[])
                 for (int i = 0; i < NumCounters; i++)
                 {
                     printf("%10i ", PCounterData[repi + i * repetitions + PMCOS]);
-                }
-            }
-            // optional ratio output
-            if (RatioOut[0])
-            {
-                union
-                {
-                    int i;
-                    float f;
-                } factor;
-                factor.i = RatioOut[3];
-                int a, b;
-                if (RatioOut[1] == 0)
-                {
-                    a = PCounterData[repi + ClockOS];
-                    if (MSRCounters.MScheme == S_AMD2)
-                        a = int(a * clockFactor + 0.5); // Calculated core clock count
-                }
-                else if ((unsigned int)RatioOut[1] <= (unsigned int)NumCounters)
-                {
-                    a = PCounterData[repi + (RatioOut[1] - 1) * repetitions + PMCOS];
-                }
-                else
-                {
-                    a = 1;
-                }
-                if (RatioOut[2] == 0)
-                {
-                    b = PCounterData[repi + ClockOS];
-                    if (MSRCounters.MScheme == S_AMD2)
-                        b = int(b * clockFactor + 0.5); // Calculated core clock count
-                }
-                else if ((unsigned int)RatioOut[2] <= (unsigned int)NumCounters)
-                {
-                    b = PCounterData[repi + (RatioOut[2] - 1) * repetitions + PMCOS];
-                }
-                else
-                {
-                    b = 1;
-                }
-                if (b == 0)
-                {
-                    printf("%10s", "inf");
-                }
-                else if (RatioOut[0] == 1)
-                {
-                    printf("%10i ", factor.i * a / b);
-                }
-                else
-                {
-                    printf("%10.6f ", factor.f * (double)a / (double)b);
-                }
-            }
-            // optional arbitrary output
-            if (TempOut)
-            {
-                union
-                {
-                    int* pi;
-                    int64_t* pl;
-                    float* pf;
-                    double* pd;
-                } pu;
-                pu.pi = PCounterData + repi; // pointer to CountTemp
-                if (TempOut & 1)
-                    pu.pi += repi; // double size
-                switch (TempOut)
-                {
-                case 2: // int
-                    printf("%10i", *pu.pi);
-                    break;
-                case 3: // 64 bit int
-                    printf("%10lli", *pu.pl);
-                    break;
-                case 4: // hexadecimal int
-                    printf("0x%08X", *pu.pi);
-                    break;
-                case 5: // hexadecimal 64-bit int
-                    printf("0x%08X%08X", pu.pi[1], pu.pi[0]);
-                    break;
-                case 6: // float
-                    printf("%10.6f", *pu.pf);
-                    break;
-                case 7: // double
-                    printf("%10.6f", *pu.pd);
-                    break;
-                case 8: // float, corrected for clock factor
-                    printf("%10.6f", *pu.pf / clockFactor);
-                    break;
-                default:
-                    printf("unknown TempOut %i", TempOut);
                 }
             }
         }

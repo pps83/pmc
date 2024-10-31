@@ -31,20 +31,3 @@ extern int Counters[MAXCOUNTERS];            // PMC register numbers
 extern int* PCounterData;  // Pointer to measured data
 extern int ClockResultsOS; // offset of clock results into CounterData (bytes)
 extern int PMCResultsOS;   // offset of PMC results into CounterData (bytes)
-
-// optional extra output of ratio between two performance counts
-extern int RatioOut[4]; // RatioOut[0] = 0: no ratio output, 1 = int, 2 = float
-                        // RatioOut[1] = numerator (0 = clock, 1 = first PMC, etc., -1 = none)
-                        // RatioOut[2] = denominator (0 = clock, 1 = first PMC, etc., -1 = none)
-                        // RatioOut[3] = factor, int or float according to RatioOut[0]
-
-extern int TempOut;               // Use CountTemp (possibly extended into CountOverhead) for arbitrary output
-                                  // 0 = no extra output
-                                  // 2 = signed 32-bit integer
-                                  // 3 = signed 64-bit integer
-                                  // 4 = 32-bit integer, hexadecimal
-                                  // 5 = 64-bit integer, hexadecimal
-                                  // 6 = float
-                                  // 7 = double
-extern const char* RatioOutTitle; // Column heading for optional extra output of ratio
-extern const char* TempOutTitle;  // Column heading for optional arbitrary output

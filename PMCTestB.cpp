@@ -84,11 +84,6 @@ int PMCResultsOS = int(CounterData.PMCResults - CounterData.CountTemp) * sizeof(
 // counter register numbers used
 int Counters[MAXCOUNTERS] = {0};
 int EventRegistersUsed[MAXCOUNTERS] = {0};
-// optional extra output
-int RatioOut[4] = {0};           // See PMCTest.h for explanation
-int TempOut = 0;                 // See PMCTest.h for explanation
-const char* RatioOutTitle = "?"; // Column heading for optional extra output of ratio
-const char* TempOutTitle = "?";  // Column heading for optional arbitrary output
 
 /*############################################################################
 #
