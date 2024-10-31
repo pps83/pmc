@@ -46,12 +46,6 @@
 // Cache line size (for preventing threads using same cache lines)
 #define CACHELINESIZE 64
 
-#ifndef _MSC_VER
-#define ALIGNEDSTRUCTURE(Name, Align) struct __attribute__((aligned(Align))) Name
-#else
-#define ALIGNEDSTRUCTURE(Name, Align) __declspec(align(Align)) struct Name
-#endif
-
 /*############################################################################
 #
 #        list of desired counter types
@@ -70,14 +64,7 @@ int CounterTypesDesired[MAXCOUNTERS] = {
     311  // data cache mises
 };
 
-/*############################################################################
-#
-#        Thread data
-#
-############################################################################*/
-// Align SThreadData structure by cache line size to avoid multiple threads
-// writing to the same cache line
-ALIGNEDSTRUCTURE(SThreadData, CACHELINESIZE)
+struct SCounterData
 {
     int CountTemp[MAXCOUNTERS + 1];            // temporary storage of clock counts and PMC counts
     int CountOverhead[MAXCOUNTERS + 1];        // temporary storage of count overhead
@@ -85,15 +72,15 @@ ALIGNEDSTRUCTURE(SThreadData, CACHELINESIZE)
     int PMCResults[REPETITIONS * MAXCOUNTERS]; // PMC count results
 };
 
-SThreadData ThreadData;                   // Results
+SCounterData CounterData;                 // Results
 int NumCounters = 0;                      // Number of valid PMC counters in Counters[]
 int MaxNumCounters = MAXCOUNTERS;         // Maximum number of PMC counters
 int UsePMC = USE_PERFORMANCE_COUNTERS;    // 0 if no PMC counters used
-int* PThreadData = (int*)&ThreadData;     // Pointer to measured data
-// offset of clock results into ThreadData (bytes)
-int ClockResultsOS = int(ThreadData.ClockResults - ThreadData.CountTemp) * sizeof(int);
-// offset of PMC results into ThreadData (bytes)
-int PMCResultsOS = int(ThreadData.PMCResults - ThreadData.CountTemp) * sizeof(int);
+int* PCounterData = (int*)&CounterData;   // Pointer to measured data
+// offset of clock results into CounterData (bytes)
+int ClockResultsOS = int(CounterData.ClockResults - CounterData.CountTemp) * sizeof(int);
+// offset of PMC results into CounterData (bytes)
+int PMCResultsOS = int(CounterData.PMCResults - CounterData.CountTemp) * sizeof(int);
 // counter register numbers used
 int Counters[MAXCOUNTERS] = {0};
 int EventRegistersUsed[MAXCOUNTERS] = {0};
@@ -132,7 +119,7 @@ int TestLoop()
 
     for (i = 0; i < MAXCOUNTERS + 1; i++)
     {
-        ThreadData.CountOverhead[i] = 0x7FFFFFFF;
+        CounterData.CountOverhead[i] = 0x7FFFFFFF;
     }
 
     /*############################################################################
@@ -160,25 +147,25 @@ int TestLoop()
         // Read counters
         for (i = 0; i < MAXCOUNTERS; i++)
         {
-            ThreadData.CountTemp[i + 1] = (int)Readpmc(Counters[i]);
+            CounterData.CountTemp[i + 1] = (int)Readpmc(Counters[i]);
         }
 #endif
 
         Serialize();
-        ThreadData.CountTemp[0] = (int)Readtsc();
+        CounterData.CountTemp[0] = (int)Readtsc();
         Serialize();
 
         // no test code here
 
         Serialize();
-        ThreadData.CountTemp[0] -= (int)Readtsc();
+        CounterData.CountTemp[0] -= (int)Readtsc();
         Serialize();
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
         for (i = 0; i < MAXCOUNTERS; i++)
         {
-            ThreadData.CountTemp[i + 1] -= (int)Readpmc(Counters[i]);
+            CounterData.CountTemp[i + 1] -= (int)Readpmc(Counters[i]);
         }
 #endif
         Serialize();
@@ -186,9 +173,9 @@ int TestLoop()
         // find minimum counts
         for (i = 0; i < MAXCOUNTERS + 1; i++)
         {
-            if (-ThreadData.CountTemp[i] < ThreadData.CountOverhead[i])
+            if (-CounterData.CountTemp[i] < CounterData.CountOverhead[i])
             {
-                ThreadData.CountOverhead[i] = -ThreadData.CountTemp[i];
+                CounterData.CountOverhead[i] = -CounterData.CountTemp[i];
             }
         }
     }
@@ -204,12 +191,12 @@ int TestLoop()
         // Read counters
         for (i = 0; i < MAXCOUNTERS; i++)
         {
-            ThreadData.CountTemp[i + 1] = (int)Readpmc(Counters[i]);
+            CounterData.CountTemp[i + 1] = (int)Readpmc(Counters[i]);
         }
 #endif
 
         Serialize();
-        ThreadData.CountTemp[0] = (int)Readtsc();
+        CounterData.CountTemp[0] = (int)Readtsc();
         Serialize();
 
         /*############################################################################
@@ -231,24 +218,24 @@ int TestLoop()
         ############################################################################*/
 
         Serialize();
-        ThreadData.CountTemp[0] -= (int)Readtsc();
+        CounterData.CountTemp[0] -= (int)Readtsc();
         Serialize();
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
         for (i = 0; i < MAXCOUNTERS; i++)
         {
-            ThreadData.CountTemp[i + 1] -= (int)Readpmc(Counters[i]);
+            CounterData.CountTemp[i + 1] -= (int)Readpmc(Counters[i]);
         }
 #endif
         Serialize();
 
         // subtract overhead
-        ThreadData.ClockResults[repi] = -ThreadData.CountTemp[0] - ThreadData.CountOverhead[0];
+        CounterData.ClockResults[repi] = -CounterData.CountTemp[0] - CounterData.CountOverhead[0];
         for (i = 0; i < MAXCOUNTERS; i++)
         {
-            ThreadData.PMCResults[repi + i * REPETITIONS] =
-                -ThreadData.CountTemp[i + 1] - ThreadData.CountOverhead[i + 1];
+            CounterData.PMCResults[repi + i * REPETITIONS] =
+                -CounterData.CountTemp[i + 1] - CounterData.CountOverhead[i + 1];
         }
     }
 

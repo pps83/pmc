@@ -28,9 +28,9 @@ extern int EventRegistersUsed[MAXCOUNTERS];  // index of counter registers used
 extern int Counters[MAXCOUNTERS];            // PMC register numbers
 
 // count results
-extern int* PThreadData;   // Pointer to measured data
-extern int ClockResultsOS; // offset of clock results into ThreadData (bytes)
-extern int PMCResultsOS;   // offset of PMC results into ThreadData (bytes)
+extern int* PCounterData;  // Pointer to measured data
+extern int ClockResultsOS; // offset of clock results into CounterData (bytes)
+extern int PMCResultsOS;   // offset of PMC results into CounterData (bytes)
 
 // optional extra output of ratio between two performance counts
 extern int RatioOut[4]; // RatioOut[0] = 0: no ratio output, 1 = int, 2 = float

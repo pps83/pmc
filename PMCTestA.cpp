@@ -110,7 +110,7 @@ int main(int argc, char* argv[])
 
     // Print results
     {
-        // calculate offsets into ThreadData
+        // calculate offsets into CounterData
         int ClockOS = ClockResultsOS / sizeof(int);
         int PMCOS = PMCResultsOS / sizeof(int);
 
@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
         // print counter outputs
         for (int repi = 0; repi < repetitions; repi++)
         {
-            int tscClock = PThreadData[repi + ClockOS];
+            int tscClock = PCounterData[repi + ClockOS];
             printf("\n%10i ", tscClock);
             if (UsePMC)
             {
@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
                 }
                 for (int i = 0; i < NumCounters; i++)
                 {
-                    printf("%10i ", PThreadData[repi + i * repetitions + PMCOS]);
+                    printf("%10i ", PCounterData[repi + i * repetitions + PMCOS]);
                 }
             }
             // optional ratio output
@@ -160,13 +160,13 @@ int main(int argc, char* argv[])
                 int a, b;
                 if (RatioOut[1] == 0)
                 {
-                    a = PThreadData[repi + ClockOS];
+                    a = PCounterData[repi + ClockOS];
                     if (MSRCounters.MScheme == S_AMD2)
                         a = int(a * clockFactor + 0.5); // Calculated core clock count
                 }
                 else if ((unsigned int)RatioOut[1] <= (unsigned int)NumCounters)
                 {
-                    a = PThreadData[repi + (RatioOut[1] - 1) * repetitions + PMCOS];
+                    a = PCounterData[repi + (RatioOut[1] - 1) * repetitions + PMCOS];
                 }
                 else
                 {
@@ -174,13 +174,13 @@ int main(int argc, char* argv[])
                 }
                 if (RatioOut[2] == 0)
                 {
-                    b = PThreadData[repi + ClockOS];
+                    b = PCounterData[repi + ClockOS];
                     if (MSRCounters.MScheme == S_AMD2)
                         b = int(b * clockFactor + 0.5); // Calculated core clock count
                 }
                 else if ((unsigned int)RatioOut[2] <= (unsigned int)NumCounters)
                 {
-                    b = PThreadData[repi + (RatioOut[2] - 1) * repetitions + PMCOS];
+                    b = PCounterData[repi + (RatioOut[2] - 1) * repetitions + PMCOS];
                 }
                 else
                 {
@@ -209,7 +209,7 @@ int main(int argc, char* argv[])
                     float* pf;
                     double* pd;
                 } pu;
-                pu.pi = PThreadData + repi; // pointer to CountTemp
+                pu.pi = PCounterData + repi; // pointer to CountTemp
                 if (TempOut & 1)
                     pu.pi += repi; // double size
                 switch (TempOut)
