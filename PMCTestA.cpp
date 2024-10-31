@@ -23,8 +23,6 @@
 
 #include "PMCTest.h"
 
-// #include <math.h> // for warmup only
-
 int diagnostics = 0; // 1 for output of CPU model and PMC scheme
 
 // desired processor number
@@ -60,172 +58,31 @@ void TestProc()
     MSRCounters.StopCounters();
 }
 
-//////////////////////////////////////////////////////////////////////
-//
-//        Start counters and leave them on, or stop counters
-//
-//////////////////////////////////////////////////////////////////////
-int setcounters(int argc, char* argv[])
-{
-    int i, cnt, thread;
-    int countthreads = 0;
-    int command = 0; // 1: start counters, 2: stop counters
-
-    if (strstr(argv[1], "startcounters"))
-        command = 1;
-    else if (strstr(argv[1], "stopcounters"))
-        command = 2;
-    else
-    {
-        printf("\nUnknown command line parameter %s\n", argv[1]);
-        return 1;
-    }
-
-    // find counter definitions on command line, if any
-    if (argc > 2)
-    {
-        for (i = 0; i < MAXCOUNTERS; i++)
-        {
-            cnt = 0;
-            if (command == 2)
-                cnt = 100; // dummy value that is valid for all CPUs
-            if (i + 2 < argc)
-                cnt = atoi(argv[i + 2]);
-            CounterTypesDesired[i] = cnt;
-        }
-    }
-
-    // Get mask of possible CPU cores
-    SyS::ProcMaskType ProcessAffMask = SyS::GetProcessMask();
-
-    // find all possible CPU cores
-    int NumThreads = (int)sizeof(void*) * 8;
-    if (NumThreads > 64)
-        NumThreads = 64;
-    int ProcNum[MAXTHREADS + 64] = {0};
-
-    for (thread = 0; thread < NumThreads; thread++)
-    {
-        if (SyS::TestProcessMask(thread, &ProcessAffMask))
-        {
-            ProcNum[thread] = thread;
-            countthreads++;
-        }
-        else
-        {
-            ProcNum[thread] = -1;
-        }
-    }
-
-    // Lock processor number for each thread
-    MSRCounters.LockProcessor();
-
-    // Find counter definitions and put them in queue for driver
-    MSRCounters.QueueCounters();
-
-    // Install and load driver
-    int e = MSRCounters.StartDriver();
-    if (e)
-        return e;
-
-    // Start MSR counters
-    for (thread = 0; thread < NumThreads; thread++)
-    {
-        if (ProcNum[thread] >= 0)
-        {
-
-#if defined(__unix__) || defined(__linux__)
-            // get desired processornumber
-            int ProcessorNumber = ProcNum[thread];
-            // Lock process to this processor number
-            SyS::SetProcessMask(ProcessorNumber);
-#else
-            // In Windows, the thread number needs only be fixed inside the driver
-#endif
-
-            if (command == 1)
-            {
-                MSRCounters.StartCounters();
-            }
-            else
-            {
-                MSRCounters.StopCounters();
-            }
-        }
-    }
-
-    // print output
-    if (command == 1)
-    {
-        printf("\nEnabled %i counters in each of %i CPU cores", NumCounters, countthreads);
-        printf("\n\nPMC number:   Counter name:");
-        for (i = 0; i < NumCounters; i++)
-        {
-            printf("\n0x%08X    %-10s ", Counters[i], MSRCounters.CounterNames[i]);
-        }
-    }
-    else
-    {
-        printf("\nDisabled %i counters in each of %i CPU cores", NumCounters, countthreads);
-    }
-    printf("\n");
-
-    // Clean up driver
-    MSRCounters.CleanUp();
-
-    return 0;
-}
-
-//////////////////////////////////////////////////////////////////////
-//
-//        Main
-//
-//////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
-    int repi;        // repetition counter
-    int e;           // error number
-
-    if (argc > 1)
-    {
-        // Interpret command line parameters
-        if (strstr(argv[1], "diagnostics"))
-            diagnostics = 1;
-        else if (strstr(argv[1], "counters"))
-        {
-            // not running test. setting or resetting PMC counters
-            return setcounters(argc, argv);
-        }
-        else
-        {
-            printf("\nUnknown command line parameter %s\n", argv[1]);
-            return 1;
-        }
-    }
+    // diagnostics = 1;
 
     // Get mask of possible CPU cores
     SyS::ProcMaskType ProcessAffMask = SyS::GetProcessMask();
 
-    // Fix a processornumber for each thread
+    // Fix a processor number
     int proc0 = 0;
     while (!SyS::TestProcessMask(proc0, &ProcessAffMask))
         proc0++; // check if proc0 is available
 
     ProcNum0 = proc0;
 
+    if (!SyS::TestProcessMask(ProcNum0, &ProcessAffMask))
     {
-        if (!SyS::TestProcessMask(ProcNum0, &ProcessAffMask))
+        // this processor core is not available
+        printf("\nProcessor %i not available. Processors available:\n", ProcNum0);
+        for (int p = 0; p < MAXTHREADS; p++)
         {
-            // this processor core is not available
-            printf("\nProcessor %i not available. Processors available:\n", ProcNum0);
-            for (int p = 0; p < MAXTHREADS; p++)
-            {
-                if (SyS::TestProcessMask(p, &ProcessAffMask))
-                    printf("%i  ", p);
-            }
-            printf("\n");
-            return 1;
+            if (SyS::TestProcessMask(p, &ProcessAffMask))
+                printf("%i  ", p);
         }
+        printf("\n");
+        return 1;
     }
 
     // Make program and driver use the same processor number
@@ -238,7 +95,7 @@ int main(int argc, char* argv[])
         return 0; // just return CPU info, don't run test
 
     // Install and load driver
-    e = MSRCounters.StartDriver();
+    MSRCounters.StartDriver();
 
     // Set high priority to minimize risk of interrupts during test
     SyS::SetProcessPriorityHigh();
@@ -253,7 +110,7 @@ int main(int argc, char* argv[])
 
     // Print results
     {
-        // calculate offsets into ThreadData[]
+        // calculate offsets into ThreadData
         int ClockOS = ClockResultsOS / sizeof(int);
         int PMCOS = PMCResultsOS / sizeof(int);
 
@@ -276,7 +133,7 @@ int main(int argc, char* argv[])
             printf("%10s ", TempOutTitle ? TempOutTitle : "Extra out");
 
         // print counter outputs
-        for (repi = 0; repi < repetitions; repi++)
+        for (int repi = 0; repi < repetitions; repi++)
         {
             int tscClock = PThreadData[repi + ClockOS];
             printf("\n%10i ", tscClock);
@@ -390,9 +247,6 @@ int main(int argc, char* argv[])
     }
 
     printf("\n");
-    // Optional: wait for key press
-    // printf("\npress any key");
-    // getch();
 
     return 0;
 }
