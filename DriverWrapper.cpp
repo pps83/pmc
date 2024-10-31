@@ -43,10 +43,11 @@ int DriverWrapper::open()
     if (ioHandle != INVALID_HANDLE_VALUE && initDll)
         return 1;
     bool startAdminCopyTried = false;
-    for (int i = 0; i < 4; i++) // Retry, Max 1000ms
+    for (int i = 0; i < 3; i++) // Retry, Max 300ms
     {
+        Sleep(100 * i);
         unsigned ret = Initialize(startAdminCopyTried, loaded);
-        if (ret == DW_DLL_NO_ERROR)
+        if (ret == DW_DLL_NO_ERROR || ret == DW_DLL_DRIVER_NOT_FOUND)
             break;
         else if (ret == ERROR_INVALID_IMAGE_HASH)
         {
@@ -54,7 +55,6 @@ int DriverWrapper::open()
                 driverFileName.c_str());
             break;
         }
-        Sleep(100 * i);
     }
     initDll = true;
     return ioHandle != INVALID_HANDLE_VALUE ? (loaded ? 2 : 1) : 0;
