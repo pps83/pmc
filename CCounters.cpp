@@ -11,7 +11,7 @@ extern int CounterTypesDesired[MAXCOUNTERS];    // list of desired counter types
 extern int EventRegistersUsed[MAXCOUNTERS];     // index of counter registers used
 extern int Counters[MAXCOUNTERS];               // PMC register numbers
 
-extern int ProcNum[];
+extern int ProcNum0;
 extern double clockFactor;
 extern int diagnostics;
 
@@ -650,7 +650,7 @@ void CCounters::LockProcessor()
     // Enable RDMSR instruction
 
     // We must lock the driver call to the desired processor number
-    int procnum = ProcNum[0];
+    int procnum = ProcNum0;
     if (procnum >= 0)
     {
         // lock driver to the same processor number as thread

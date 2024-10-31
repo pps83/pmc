@@ -33,8 +33,8 @@ int diagnostics = 0; // 1 for output of CPU model and PMC scheme
 //
 //////////////////////////////////////////////////////////////////////
 
-// processornumber for each thread
-int ProcNum[1] = {0};
+// desired processor number
+int ProcNum0 = 0;
 
 // clock correction factor for AMD Zen processor
 double clockFactor = 0;
@@ -56,11 +56,8 @@ void ThreadProc1()
     //  check thread number
     unsigned int threadnum = 0;
 
-    // get desired processornumber
-    int ProcessorNumber = ProcNum[threadnum];
-
-    // Lock process to this processor number
-    SyS::SetProcessMask(ProcessorNumber);
+    // Lock process to the desired processor number
+    SyS::SetProcessMask(ProcNum0);
 
     // Start MSR counters
     MSRCounters.StartCounters();
@@ -120,6 +117,7 @@ int setcounters(int argc, char* argv[])
     int NumThreads = (int)sizeof(void*) * 8;
     if (NumThreads > 64)
         NumThreads = 64;
+    int ProcNum[MAXTHREADS + 64] = {0};
 
     for (thread = 0; thread < NumThreads; thread++)
     {
@@ -201,10 +199,7 @@ int setcounters(int argc, char* argv[])
 int main(int argc, char* argv[])
 {
     int repi;        // repetition counter
-    int i;           // loop counter
-    int t;           // thread counter
     int e;           // error number
-    int procthreads; // number of threads supported by processor
 
     if (argc > 1)
     {
@@ -225,37 +220,19 @@ int main(int argc, char* argv[])
 
     // Get mask of possible CPU cores
     SyS::ProcMaskType ProcessAffMask = SyS::GetProcessMask();
-    // Count possible threads
-    int maxProcThreads = (int)sizeof(void*) * 8;
-    if (maxProcThreads > 64)
-        maxProcThreads = 64;
-    for (procthreads = i = 0; i < maxProcThreads; i++)
-    {
-        if (SyS::TestProcessMask(i, &ProcessAffMask))
-            procthreads++;
-    }
 
     // Fix a processornumber for each thread
     int proc0 = 0;
     while (!SyS::TestProcessMask(proc0, &ProcessAffMask))
         proc0++; // check if proc0 is available
 
-    t = 0; i = 0;
+    ProcNum0 = proc0;
+
     {
-        // make processornumbers different, and last thread = MainThreadProcNum:
-        // ProcNum[t] = MainThreadProcNum ^ i;
-        if (procthreads < 4)
-        {
-            ProcNum[t] = i + proc0;
-        }
-        else
-        {
-            ProcNum[t] = (i % 2) * (procthreads / 2) + i / 2 + proc0;
-        }
-        if (!SyS::TestProcessMask(ProcNum[t], &ProcessAffMask))
+        if (!SyS::TestProcessMask(ProcNum0, &ProcessAffMask))
         {
             // this processor core is not available
-            printf("\nProcessor %i not available. Processors available:\n", ProcNum[t]);
+            printf("\nProcessor %i not available. Processors available:\n", ProcNum0);
             for (int p = 0; p < MAXTHREADS; p++)
             {
                 if (SyS::TestProcessMask(p, &ProcessAffMask))
@@ -304,7 +281,7 @@ int main(int argc, char* argv[])
             {
                 printf("%10s ", "Corrected");
             }
-            for (i = 0; i < NumCounters; i++)
+            for (int i = 0; i < NumCounters; i++)
             {
                 printf("%10s ", MSRCounters.CounterNames[i]);
             }
@@ -325,7 +302,7 @@ int main(int argc, char* argv[])
                 {
                     printf("%10i ", int(tscClock * clockFactor + 0.5)); // Calculated core clock count
                 }
-                for (i = 0; i < NumCounters; i++)
+                for (int i = 0; i < NumCounters; i++)
                 {
                     printf("%10i ", PThreadData[repi + i * repetitions + TOffset + PMCOS]);
                 }
