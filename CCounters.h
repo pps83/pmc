@@ -1,16 +1,69 @@
 #pragma once
 #include "MSRDriver.h"
 #include "DriverWrapper.h"
-#include <windows.h>
-#include <winsvc.h>
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
+#include <windows.h>
+#include <winsvc.h>
 
 // maximum number of performance counters used
 const int MAXCOUNTERS = 8;
 
 // max name length of counters
 const int COUNTERNAMELEN = 10;
+
+#ifdef _MSC_VER // Use intrinsics for low level functions
+
+static inline void Serialize()
+{
+    // serialize CPU by cpuid function 0
+    int dummy[4];
+    __cpuid(dummy, 0);
+    // Prevent the compiler from optimizing away the whole Serialize function:
+    volatile int DontSkip = dummy[0];
+}
+#define Cpuid __cpuid
+#define Readtsc __rdtsc
+#define Readpmc __readpmc
+
+#else // This version is for gas/AT&T syntax
+
+static void Cpuid(int Output[4], int aa)
+{
+    int a, b, c, d;
+    __asm("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(aa), "c"(0) :);
+    Output[0] = a;
+    Output[1] = b;
+    Output[2] = c;
+    Output[3] = d;
+}
+
+static inline void Serialize()
+{
+    // serialize CPU
+    __asm__ __volatile__("xorl %%eax, %%eax \n cpuid " : : : "%eax", "%ebx", "%ecx", "%edx");
+}
+
+static inline int Readtsc()
+{
+    // read time stamp counter
+    int r;
+    __asm__ __volatile__("rdtsc" : "=a"(r) : : "%edx");
+    return r;
+}
+
+static inline int Readpmc(int nPerfCtr)
+{
+    // read performance monitor counter number nPerfCtr
+    int r;
+    __asm__ __volatile__("rdpmc" : "=a"(r) : "c"(nPerfCtr) : "%edx");
+    return r;
+}
+#endif
+
 
 // codes for processor vendor
 enum EProcVendor
@@ -262,12 +315,29 @@ public:
     long long read2(unsigned int register_number);             // get value from previous MSR_READ command in queue2
 
 public:
+    int countersCount() const
+    {
+        return NumCounters;
+    }
+
+    uint64_t counterRead(int counterNum) const
+    {
+        return Readpmc(Counters[counterNum]);
+    }
+
+    const char* counterName(int counterNum) const
+    {
+        return CounterNames[counterNum];
+    }
+
+protected:
     int NumCounters = 0;                        // Number of valid PMC counters in Counters[]
 
     const char* CounterNames[MAXCOUNTERS] = {}; // name of each counter
     int Counters[MAXCOUNTERS] = {};             // counter register numbers used
     int EventRegistersUsed[MAXCOUNTERS] = {};   // index of counter registers used
 
+public:
     EProcVendor MVendor; // microprocessor vendor
     EProcFamily MFamily; // microprocessor type and family
     EPMCScheme MScheme;  // PMC monitoring scheme

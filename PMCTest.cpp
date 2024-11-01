@@ -24,9 +24,6 @@
 #include "MSRDriver.h"
 #include "CCounters.h"
 #include <windows.h>
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -44,62 +41,6 @@
 
 // Cache line size (for preventing threads using same cache lines)
 #define CACHELINESIZE 64
-
-// maximum number of threads. Must be 4 or 8.
-#if defined(_M_X64) || defined(__x86_64__)
-#define MAXTHREADS 8
-#else
-#define MAXTHREADS 4
-#endif
-
-#ifdef _MSC_VER // Use intrinsics for low level functions
-
-static inline void Serialize()
-{
-    // serialize CPU by cpuid function 0
-    int dummy[4];
-    __cpuid(dummy, 0);
-    // Prevent the compiler from optimizing away the whole Serialize function:
-    volatile int DontSkip = dummy[0];
-}
-#define Cpuid __cpuid
-#define Readtsc __rdtsc
-#define Readpmc __readpmc
-
-#else // This version is for gas/AT&T syntax
-
-static void Cpuid(int Output[4], int aa)
-{
-    int a, b, c, d;
-    __asm("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(aa), "c"(0) :);
-    Output[0] = a;
-    Output[1] = b;
-    Output[2] = c;
-    Output[3] = d;
-}
-
-static inline void Serialize()
-{
-    // serialize CPU
-    __asm__ __volatile__("xorl %%eax, %%eax \n cpuid " : : : "%eax", "%ebx", "%ecx", "%edx");
-}
-
-static inline int Readtsc()
-{
-    // read time stamp counter
-    int r;
-    __asm__ __volatile__("rdtsc" : "=a"(r) : : "%edx");
-    return r;
-}
-
-static inline int Readpmc(int nPerfCtr)
-{
-    // read performance monitor counter number nPerfCtr
-    int r;
-    __asm__ __volatile__("rdpmc" : "=a"(r) : "c"(nPerfCtr) : "%edx");
-    return r;
-}
-#endif
 
 namespace SyS
 { // system-specific process and thread functions
@@ -221,7 +162,7 @@ int TestLoop()
     // and reads the counters before and after each run:
     int repi; // repetition index
 
-    for (int i = 0; i < MSRCounters.NumCounters + 1; i++)
+    for (int i = 0; i < MSRCounters.countersCount() + 1; i++)
     {
         CounterData.CountOverhead[i] = 0x7FFFFFFF;
     }
@@ -249,9 +190,9 @@ int TestLoop()
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
-        for (int i = 0; i < MSRCounters.NumCounters; i++)
+        for (int i = 0; i < MSRCounters.countersCount(); i++)
         {
-            CounterData.CountTemp[i + 1] = (int)Readpmc(MSRCounters.Counters[i]);
+            CounterData.CountTemp[i + 1] = (int)MSRCounters.counterRead(i);
         }
 #endif
 
@@ -267,15 +208,15 @@ int TestLoop()
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
-        for (int i = 0; i < MSRCounters.NumCounters; i++)
+        for (int i = 0; i < MSRCounters.countersCount(); i++)
         {
-            CounterData.CountTemp[i + 1] -= (int)Readpmc(MSRCounters.Counters[i]);
+            CounterData.CountTemp[i + 1] -= (int)MSRCounters.counterRead(i);
         }
 #endif
         Serialize();
 
         // find minimum counts
-        for (int i = 0; i < MSRCounters.NumCounters + 1; i++)
+        for (int i = 0; i < MSRCounters.countersCount() + 1; i++)
         {
             if (-CounterData.CountTemp[i] < CounterData.CountOverhead[i])
             {
@@ -293,9 +234,9 @@ int TestLoop()
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
-        for (int i = 0; i < MSRCounters.NumCounters; i++)
+        for (int i = 0; i < MSRCounters.countersCount(); i++)
         {
-            CounterData.CountTemp[i + 1] = (int)Readpmc(MSRCounters.Counters[i]);
+            CounterData.CountTemp[i + 1] = (int)MSRCounters.counterRead(i);
         }
 #endif
 
@@ -327,16 +268,16 @@ int TestLoop()
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
-        for (int i = 0; i < MSRCounters.NumCounters; i++)
+        for (int i = 0; i < MSRCounters.countersCount(); i++)
         {
-            CounterData.CountTemp[i + 1] -= (int)Readpmc(MSRCounters.Counters[i]);
+            CounterData.CountTemp[i + 1] -= (int)MSRCounters.counterRead(i);
         }
 #endif
         Serialize();
 
         // subtract overhead
         CounterData.ClockResults[repi] = -CounterData.CountTemp[0] - CounterData.CountOverhead[0];
-        for (int i = 0; i < MSRCounters.NumCounters; i++)
+        for (int i = 0; i < MSRCounters.countersCount(); i++)
         {
             CounterData.PMCResults[repi + i * REPETITIONS] =
                 -CounterData.CountTemp[i + 1] - CounterData.CountOverhead[i + 1];
@@ -385,7 +326,7 @@ int main(int argc, char* argv[])
     {
         // this processor core is not available
         printf("\nProcessor %i not available. Processors available:\n", ProcNum0);
-        for (int p = 0; p < MAXTHREADS; p++)
+        for (int p = 0; p < 64; p++) // hardcoded max cpu count to 64
         {
             if (SyS::TestProcessMask(p, &ProcessAffMask))
                 printf("%i  ", p);
@@ -436,9 +377,9 @@ int main(int argc, char* argv[])
             {
                 printf("%10s ", "Corrected");
             }
-            for (int i = 0; i < MSRCounters.NumCounters; i++)
+            for (int i = 0; i < MSRCounters.countersCount(); i++)
             {
-                printf("%10s ", MSRCounters.CounterNames[i]);
+                printf("%10s ", MSRCounters.counterName(i));
             }
         }
 
@@ -453,7 +394,7 @@ int main(int argc, char* argv[])
                 {
                     printf("%10i ", int(tscClock * clockFactor + 0.5)); // Calculated core clock count
                 }
-                for (int i = 0; i < MSRCounters.NumCounters; i++)
+                for (int i = 0; i < MSRCounters.countersCount(); i++)
                 {
                     printf("%10i ", PCounterData[repi + i * repetitions + PMCOS]);
                 }
