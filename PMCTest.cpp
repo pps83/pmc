@@ -178,17 +178,12 @@ struct SCounterData
 };
 
 SCounterData CounterData;                 // Results
-int NumCounters = 0;                      // Number of valid PMC counters in Counters[]
-int MaxNumCounters = MAXCOUNTERS;         // Maximum number of PMC counters
 int UsePMC = USE_PERFORMANCE_COUNTERS;    // 0 if no PMC counters used
 int* PCounterData = (int*)&CounterData;   // Pointer to measured data
 // offset of clock results into CounterData (bytes)
 int ClockResultsOS = int(CounterData.ClockResults - CounterData.CountTemp) * sizeof(int);
 // offset of PMC results into CounterData (bytes)
 int PMCResultsOS = int(CounterData.PMCResults - CounterData.CountTemp) * sizeof(int);
-// counter register numbers used
-int Counters[MAXCOUNTERS] = {0};
-int EventRegistersUsed[MAXCOUNTERS] = {0};
 
 /*############################################################################
 #
@@ -224,10 +219,9 @@ int TestLoop()
 {
     // this function runs the code to test REPETITIONS times
     // and reads the counters before and after each run:
-    int i;    // counter index
     int repi; // repetition index
 
-    for (i = 0; i < MAXCOUNTERS + 1; i++)
+    for (int i = 0; i < MSRCounters.NumCounters + 1; i++)
     {
         CounterData.CountOverhead[i] = 0x7FFFFFFF;
     }
@@ -255,9 +249,9 @@ int TestLoop()
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
-        for (i = 0; i < MAXCOUNTERS; i++)
+        for (int i = 0; i < MSRCounters.NumCounters; i++)
         {
-            CounterData.CountTemp[i + 1] = (int)Readpmc(Counters[i]);
+            CounterData.CountTemp[i + 1] = (int)Readpmc(MSRCounters.Counters[i]);
         }
 #endif
 
@@ -273,15 +267,15 @@ int TestLoop()
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
-        for (i = 0; i < MAXCOUNTERS; i++)
+        for (int i = 0; i < MSRCounters.NumCounters; i++)
         {
-            CounterData.CountTemp[i + 1] -= (int)Readpmc(Counters[i]);
+            CounterData.CountTemp[i + 1] -= (int)Readpmc(MSRCounters.Counters[i]);
         }
 #endif
         Serialize();
 
         // find minimum counts
-        for (i = 0; i < MAXCOUNTERS + 1; i++)
+        for (int i = 0; i < MSRCounters.NumCounters + 1; i++)
         {
             if (-CounterData.CountTemp[i] < CounterData.CountOverhead[i])
             {
@@ -299,9 +293,9 @@ int TestLoop()
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
-        for (i = 0; i < MAXCOUNTERS; i++)
+        for (int i = 0; i < MSRCounters.NumCounters; i++)
         {
-            CounterData.CountTemp[i + 1] = (int)Readpmc(Counters[i]);
+            CounterData.CountTemp[i + 1] = (int)Readpmc(MSRCounters.Counters[i]);
         }
 #endif
 
@@ -318,7 +312,7 @@ int TestLoop()
         // Put the code to test here,
         // or a call to a function defined in a separate module
 
-        for (i = 0; i < 1000; i++)
+        for (int i = 0; i < 1000; i++)
             UserData[i] *= 99;
 
         /*############################################################################
@@ -333,16 +327,16 @@ int TestLoop()
 
 #if USE_PERFORMANCE_COUNTERS
         // Read counters
-        for (i = 0; i < MAXCOUNTERS; i++)
+        for (int i = 0; i < MSRCounters.NumCounters; i++)
         {
-            CounterData.CountTemp[i + 1] -= (int)Readpmc(Counters[i]);
+            CounterData.CountTemp[i + 1] -= (int)Readpmc(MSRCounters.Counters[i]);
         }
 #endif
         Serialize();
 
         // subtract overhead
         CounterData.ClockResults[repi] = -CounterData.CountTemp[0] - CounterData.CountOverhead[0];
-        for (i = 0; i < MAXCOUNTERS; i++)
+        for (int i = 0; i < MSRCounters.NumCounters; i++)
         {
             CounterData.PMCResults[repi + i * REPETITIONS] =
                 -CounterData.CountTemp[i + 1] - CounterData.CountOverhead[i + 1];
@@ -442,7 +436,7 @@ int main(int argc, char* argv[])
             {
                 printf("%10s ", "Corrected");
             }
-            for (int i = 0; i < NumCounters; i++)
+            for (int i = 0; i < MSRCounters.NumCounters; i++)
             {
                 printf("%10s ", MSRCounters.CounterNames[i]);
             }
@@ -459,7 +453,7 @@ int main(int argc, char* argv[])
                 {
                     printf("%10i ", int(tscClock * clockFactor + 0.5)); // Calculated core clock count
                 }
-                for (int i = 0; i < NumCounters; i++)
+                for (int i = 0; i < MSRCounters.NumCounters; i++)
                 {
                     printf("%10i ", PCounterData[repi + i * repetitions + PMCOS]);
                 }

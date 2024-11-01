@@ -4,12 +4,8 @@
 #endif
 
 // performance counters used
-extern int NumCounters;                         // Number of PMC counters defined Counters[]
 extern int UsePMC;                              // 0 if no PMC counters used
-extern int MaxNumCounters;                      // Maximum number of PMC counters
 extern int CounterTypesDesired[MAXCOUNTERS];    // list of desired counter types
-extern int EventRegistersUsed[MAXCOUNTERS];     // index of counter registers used
-extern int Counters[MAXCOUNTERS];               // PMC register numbers
 
 extern int ProcNum0;
 extern double clockFactor;
@@ -618,7 +614,7 @@ void CCounters::QueueCounters()
     if (UsePMC)
     {
         // Get all counter requests
-        for (int i = 0; i < MaxNumCounters; i++)
+        for (int i = 0; i < MAXCOUNTERS; i++)
         {
             CounterType = CounterTypesDesired[i];
             err = DefineCounter(CounterType);
@@ -1035,10 +1031,7 @@ const char* CCounters::DefineCounter(int CounterType)
     for (i = 0, p = CounterDefinitions; i < NumCounterDefinitions; i++, p++)
     {
         if (p->CounterType == CounterType && (p->PMCScheme & MScheme) && (p->ProcessorFamily & MFamily))
-        {
-            // Match found
-            break;
-        }
+            break; // Match found
     }
     if (i >= NumCounterDefinitions)
     {
@@ -1052,14 +1045,14 @@ const char* CCounters::DefineCounter(int CounterType)
 // (return value is error message)
 const char* CCounters::DefineCounter(SCounterDefinition& CDef)
 {
-    int i, counternr, a, b, reg, eventreg, tag;
+    int counternr, a, b, reg, eventreg, tag;
     static int CountersEnabled = 0, FixedCountersEnabled = 0;
 
     if (!(CDef.ProcessorFamily & MFamily))
     {
         return "Counter not defined for present microprocessor family";
     }
-    if (NumCounters >= MaxNumCounters)
+    if (NumCounters >= MAXCOUNTERS)
         return "Too many counters";
 
     if (CDef.CounterFirst & 0x40000000)
@@ -1082,7 +1075,7 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
         for (counternr = CDef.CounterFirst; counternr <= CDef.CounterLast; counternr++)
         {
             // Check if this counter register is already in use
-            for (i = 0; i < NumCounters; i++)
+            for (int i = 0; i < NumCounters; i++)
             {
                 if (counternr == Counters[i])
                 {
@@ -1094,7 +1087,7 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
             {
                 // Check if the corresponding event register ESCR is already in use
                 eventreg = GetP4EventSelectRegAddress(counternr, CDef.EventSelectReg);
-                for (i = 0; i < NumCounters; i++)
+                for (int i = 0; i < NumCounters; i++)
                 {
                     if (EventRegistersUsed[i] == eventreg)
                     {
@@ -1147,7 +1140,7 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
             if (!(FixedCountersEnabled++))
             {
                 // Enable fixed function counters
-                for (a = i = 0; i < NumFixedPMCs; i++)
+                for (int i = a = 0; i < NumFixedPMCs; i++)
                 {
                     b = 2; // 1=privileged level, 2=user level, 4=any thread
                     a |= b << (4 * i);

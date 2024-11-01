@@ -88,8 +88,8 @@ struct SCounterDefinition
 class CMSRInOutQue
 {
 public:
-    // constructor
     CMSRInOutQue();
+
     // put record in queue
     int put(EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi = 0);
     // list of entries
@@ -237,12 +237,12 @@ public:
     }
 };
 
-
-// class CCounters defines, starts and stops MSR counters
+// defines, starts and stops MSR counters
 class CCounters
 {
 public:
-    CCounters();                                               // constructor
+    CCounters();
+
     const char* DefineCounter(int CounterType);                // request a counter setup
     const char* DefineCounter(SCounterDefinition& CounterDef); // request a counter setup
     void LockProcessor();                                      // Make program and driver use the same processor number
@@ -251,8 +251,6 @@ public:
     void StartCounters();                                      // start counting
     void StopCounters();                                       // stop and reset counters
     void CleanUp();                                            // Any required cleanup of driver etc
-    CMSRDriver msr;                                            // interface to MSR access driver
-    char* CounterNames[MAXCOUNTERS];                           // name of each counter
     void Put1(                                                 // put record into multiple start queues
         EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi = 0);
     void Put2(                                                 // put record into multiple stop queues
@@ -262,10 +260,18 @@ public:
     void GetPMCScheme();                                       // get PMC scheme
     long long read1(unsigned int register_number);             // get value from previous MSR_READ command in queue1
     long long read2(unsigned int register_number);             // get value from previous MSR_READ command in queue2
-    // protected:
+
+public:
+    int NumCounters = 0;                        // Number of valid PMC counters in Counters[]
+
+    const char* CounterNames[MAXCOUNTERS] = {}; // name of each counter
+    int Counters[MAXCOUNTERS] = {};             // counter register numbers used
+    int EventRegistersUsed[MAXCOUNTERS] = {};   // index of counter registers used
+
     EProcVendor MVendor; // microprocessor vendor
     EProcFamily MFamily; // microprocessor type and family
     EPMCScheme MScheme;  // PMC monitoring scheme
+
 protected:
     CMSRInOutQue queue1; // que of MSR commands to do by StartCounters()
     CMSRInOutQue queue2; // que of MSR commands to do by StopCounters()
@@ -276,4 +282,7 @@ protected:
     int NumFixedPMCs;          // Number of fixed function PMCs
     unsigned int rTSCounter;   // PMC register number of time stamp counter in S_AMD2 scheme
     unsigned int rCoreCounter; // PMC register number of core clock counter in S_AMD2 scheme
+
+private:
+    CMSRDriver msr; // interface to MSR access driver
 };
