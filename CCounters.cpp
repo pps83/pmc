@@ -7,10 +7,37 @@
 extern int UsePMC;                              // 0 if no PMC counters used
 extern int CounterTypesDesired[MAXCOUNTERS];    // list of desired counter types
 
-extern int ProcNum0;
 extern double clockFactor;
 
 #define Cpuid __cpuid
+
+typedef DWORD_PTR ProcMaskType; // Type for processor mask
+
+// Get mask of possible CPU cores
+static inline ProcMaskType GetProcessMask()
+{
+    ProcMaskType ProcessAffMask = 0, SystemAffMask = 0;
+    GetProcessAffinityMask(GetCurrentProcess(), &ProcessAffMask, &SystemAffMask);
+    return ProcessAffMask;
+}
+
+// Set CPU to run on specified CPU core number (0-based)
+static inline void SetProcessMask(int p)
+{
+    int r = (int)SetThreadAffinityMask(GetCurrentThread(), (ProcMaskType)1 << p);
+    if (r == 0)
+    {
+        int e = GetLastError();
+        printf("\nFailed to lock thread to processor %i. Error = %i\n", p, e);
+    }
+}
+
+// Test if specified CPU core is available
+static inline int TestProcessMask(int p, ProcMaskType* m)
+{
+    return ((ProcMaskType)1 << p) & *m;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -641,6 +668,8 @@ void CCounters::QueueCounters()
 
 void CCounters::LockProcessor()
 {
+    setDesiredCpu();
+
     // Make program and driver use the same processor number if multiple processors
     // Enable RDMSR instruction
 
@@ -1277,4 +1306,33 @@ std::string CCounters::getDiagnostic() const
             MFamily, MScheme);
     }
     return buf;
+}
+
+void CCounters::setDesiredCpu()
+{
+    // Get mask of possible CPU cores
+    ProcMaskType ProcessAffMask = GetProcessMask();
+
+    // Fix a processor number
+    int proc0 = 0;
+    while (!TestProcessMask(proc0, &ProcessAffMask))
+        proc0++; // check if proc0 is available
+
+    ProcNum0 = proc0;
+
+    if (!TestProcessMask(ProcNum0, &ProcessAffMask))
+    {
+        // this processor core is not available
+        printf("\nProcessor %i not available. Processors available:\n", ProcNum0);
+        for (int p = 0; p < 64; p++) // hardcoded max cpu count to 64
+        {
+            if (TestProcessMask(p, &ProcessAffMask))
+                printf("%i  ", p);
+        }
+        printf("\n");
+        return;
+    }
+
+    // Lock process to the desired processor number
+    SetProcessMask(ProcNum0);
 }

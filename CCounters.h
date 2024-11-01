@@ -340,7 +340,10 @@ protected:
     int Counters[MAXCOUNTERS] = {};             // counter register numbers used
     int EventRegistersUsed[MAXCOUNTERS] = {};   // index of counter registers used
 
-    int Family = -1, Model = -1; // these are used for diagnostic output
+    int Family = -1, Model = -1;                // these are used for diagnostic output
+    int ProcNum0 = 0;                           // desired processor number
+
+    void setDesiredCpu();
 
 public:
     EProcVendor MVendor; // microprocessor vendor

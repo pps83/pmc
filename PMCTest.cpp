@@ -42,37 +42,8 @@
 // Cache line size (for preventing threads using same cache lines)
 #define CACHELINESIZE 64
 
-namespace SyS
-{ // system-specific process and thread functions
-
-typedef DWORD_PTR ProcMaskType; // Type for processor mask
-// typedef unsigned int ProcMaskType;     // If DWORD_PTR not defined
-
-// Get mask of possible CPU cores
-static inline ProcMaskType GetProcessMask()
+namespace SyS // system-specific process and thread functions
 {
-    ProcMaskType ProcessAffMask = 0, SystemAffMask = 0;
-    GetProcessAffinityMask(GetCurrentProcess(), &ProcessAffMask, &SystemAffMask);
-    return ProcessAffMask;
-}
-
-// Set CPU to run on specified CPU core number (0-based)
-static inline void SetProcessMask(int p)
-{
-    int r = (int)SetThreadAffinityMask(GetCurrentThread(), (ProcMaskType)1 << p);
-    if (r == 0)
-    {
-        int e = GetLastError();
-        printf("\nFailed to lock thread to processor %i. Error = %i\n", p, e);
-    }
-}
-
-// Test if specified CPU core is available
-static inline int TestProcessMask(int p, ProcMaskType* m)
-{
-    return ((ProcMaskType)1 << p) & *m;
-}
-
 // Sleep for the rest of current timeslice
 static inline void Sleep0()
 {
@@ -141,9 +112,6 @@ int PMCResultsOS = int(CounterData.PMCResults - CounterData.CountTemp) * sizeof(
 #define USER_DATA_SIZE ROUND_UP(1000, CACHELINESIZE)
 
 int UserData[USER_DATA_SIZE];
-
-// desired processor number
-int ProcNum0 = 0;
 
 // clock correction factor for AMD Zen processor
 double clockFactor = 0;
@@ -287,9 +255,6 @@ int TestLoop()
 
 void TestProc()
 {
-    // Lock process to the desired processor number
-    SyS::SetProcessMask(ProcNum0);
-
     // Start MSR counters
     MSRCounters.StartCounters();
 
@@ -308,29 +273,6 @@ void TestProc()
 
 int main(int argc, char* argv[])
 {
-    // Get mask of possible CPU cores
-    SyS::ProcMaskType ProcessAffMask = SyS::GetProcessMask();
-
-    // Fix a processor number
-    int proc0 = 0;
-    while (!SyS::TestProcessMask(proc0, &ProcessAffMask))
-        proc0++; // check if proc0 is available
-
-    ProcNum0 = proc0;
-
-    if (!SyS::TestProcessMask(ProcNum0, &ProcessAffMask))
-    {
-        // this processor core is not available
-        printf("\nProcessor %i not available. Processors available:\n", ProcNum0);
-        for (int p = 0; p < 64; p++) // hardcoded max cpu count to 64
-        {
-            if (SyS::TestProcessMask(p, &ProcessAffMask))
-                printf("%i  ", p);
-        }
-        printf("\n");
-        return 1;
-    }
-
     // Make program and driver use the same processor number
     MSRCounters.LockProcessor();
 
