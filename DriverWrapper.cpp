@@ -390,6 +390,8 @@ static bool installAsAdmin(const std::string& driverFileName, const std::string&
 
 unsigned DriverWrapper::Initialize(bool& startAdminCopyTried, bool& loadedDriver)
 {
+    // MessageBox(0, IsRunningAsAdmin() ? _T("IsRunningAsAdmin!!") : _T("NOT IsRunningAsAdmin!!"), NULL, NULL);
+
     loadedDriver = false;
 
     if (driverFilePath.empty())
@@ -400,16 +402,14 @@ unsigned DriverWrapper::Initialize(bool& startAdminCopyTried, bool& loadedDriver
 
         GetModuleFileNameW(NULL, dir, MAX_PATH);
 
-        // if (IsRunningAsAdmin())
-        //     MessageBox(0, _T("IsRunningAsAdmin!!"), NULL, NULL);
-        // else
-        //     MessageBox(0, _T("NOT IsRunningAsAdmin!!"), NULL, NULL);
-
         if ((ptr = wcsrchr(dir, '\\')) != NULL)
             *ptr = '\0';
         swprintf(gDriverPath, std::size(gDriverPath), L"%s\\%S", dir, driverFileName.c_str());
         driverFilePath = gDriverPath;
     }
+
+    if (OpenDriver())
+        return DW_DLL_NO_ERROR;
 
     if (IsFileExist(driverFilePath.c_str()) == FALSE)
         return DW_DLL_DRIVER_NOT_FOUND;
@@ -417,69 +417,58 @@ unsigned DriverWrapper::Initialize(bool& startAdminCopyTried, bool& loadedDriver
     if (IsOnNetworkDrive(driverFilePath.c_str()) == TRUE)
         return DW_DLL_DRIVER_NOT_LOADED_ON_NETWORK;
 
-    if (1) // TODO: if (gIsNT)
+    // start admin copy
+    if (!startAdminCopyTried && !isRunningAsAdmin() && !hasInstallCmdParam())
     {
-        if (OpenDriver())
-            return DW_DLL_NO_ERROR;
-
-        // TODO: start admin copy
-        if (!startAdminCopyTried && !isRunningAsAdmin() && !hasInstallCmdParam())
+        startAdminCopyTried = true;
+        if (isLeftCtrlPressed() || startAdminCopy())
         {
-            startAdminCopyTried = true;
-            if (isLeftCtrlPressed() || startAdminCopy())
+            // run DriverWrapper::adminCopyInit from Administrator account
+            HANDLE childProcess = NULL;
+            bool ret = installAsAdmin(driverFileName, driverIoFileName, serviceName, driverFilePath, childProcess);
+            for (int i = 0; i < (ret ? 1000 : 10); ++i)
             {
-                // run adminCopyInit from admin account
-                HANDLE childProcess = NULL;
-                bool ret = installAsAdmin(driverFileName, driverIoFileName, serviceName, driverFilePath, childProcess);
-                for (int i = 0; i < (ret ? 1000 : 10); ++i)
+                if (OpenDriver())
                 {
-                    if (OpenDriver())
-                    {
-                        if (childProcess != NULL)
-                        {
-                            CloseHandle(childProcess);
-                            childProcess = NULL;
-                        }
-                        return DW_DLL_NO_ERROR;
-                    }
-                    DWORD exitCode;
-                    if (childProcess != NULL && GetExitCodeProcess(childProcess, &exitCode) && exitCode != STILL_ACTIVE)
+                    if (childProcess != NULL)
                     {
                         CloseHandle(childProcess);
                         childProcess = NULL;
-                        if (exitCode == ERROR_INVALID_IMAGE_HASH)
-                            return ERROR_INVALID_IMAGE_HASH;
                     }
-                    Sleep(10);
+                    return DW_DLL_NO_ERROR;
                 }
-                if (childProcess != NULL)
+                DWORD exitCode;
+                if (childProcess != NULL && GetExitCodeProcess(childProcess, &exitCode) && exitCode != STILL_ACTIVE)
                 {
                     CloseHandle(childProcess);
                     childProcess = NULL;
+                    if (exitCode == ERROR_INVALID_IMAGE_HASH)
+                        return ERROR_INVALID_IMAGE_HASH;
                 }
+                Sleep(10);
+            }
+            if (childProcess != NULL)
+            {
+                CloseHandle(childProcess);
+                childProcess = NULL;
             }
         }
-
-        ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_REMOVE);
-        if (!ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_INSTALL))
-        {
-            bool invalidImageError = GetLastError() == ERROR_INVALID_IMAGE_HASH;
-            ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_REMOVE);
-            return invalidImageError ? ERROR_INVALID_IMAGE_HASH : DW_DLL_DRIVER_NOT_LOADED;
-        }
-
-        if (OpenDriver())
-        {
-            loadedDriver = true;
-            return DW_DLL_NO_ERROR;
-        }
-        return DW_DLL_DRIVER_NOT_LOADED;
     }
-    else
+
+    ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_REMOVE);
+    if (!ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_INSTALL))
     {
-        ioHandle = INVALID_HANDLE_VALUE;
+        bool invalidImageError = GetLastError() == ERROR_INVALID_IMAGE_HASH;
+        ManageDriver(serviceName.c_str(), driverFilePath.c_str(), DW_DRIVER_REMOVE);
+        return invalidImageError ? ERROR_INVALID_IMAGE_HASH : DW_DLL_DRIVER_NOT_LOADED;
+    }
+
+    if (OpenDriver())
+    {
+        loadedDriver = true;
         return DW_DLL_NO_ERROR;
     }
+    return DW_DLL_DRIVER_NOT_LOADED;
 }
 
 unsigned DriverWrapper::GetRefCount()
