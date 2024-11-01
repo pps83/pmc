@@ -4,7 +4,7 @@
 #endif
 
 // performance counters used
-extern int CounterTypesDesired[MAXCOUNTERS];    // list of desired counter types
+extern int CounterTypesDesired[MAXCOUNTERS]; // list of desired counter types
 
 #define Cpuid __cpuid
 
@@ -34,7 +34,6 @@ static inline int TestProcessMask(int p, ProcMaskType* m)
 {
     return ((ProcMaskType)1 << p) & *m;
 }
-
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -91,7 +90,7 @@ static inline int TestProcessMask(int p, ProcMaskType* m)
 //    EventMask = Unit mask.
 //
 
-SCounterDefinition CounterDefinitions[] = {
+static SCounterDefinition CounterDefinitions[] = {
     //  id   scheme cpu    countregs eventreg event  mask   name
     {100,  S_P4, PRALL,  4,   7,     0,      9,      7,  "Uops"     }, // uops from any source
     {101,  S_P4, PRALL,  4,   7,     0,      9,      2,  "UopsTC"   }, // uops from trace cache
@@ -609,7 +608,6 @@ SCounterDefinition CounterDefinitions[] = {
     {0, S_UNKNOWN, PRUNKNOWN, 0,  0,     0,      0,     0,    0     }  // list must end with a record of all 0
 };
 
-
 CMSRInOutQue::CMSRInOutQue()
 {
     n = 0;
@@ -641,10 +639,6 @@ CCounters::CCounters()
     MVendor = VENDOR_UNKNOWN;
     MFamily = PRUNKNOWN;
     MScheme = S_UNKNOWN;
-    NumPMCs = 0;
-    NumFixedPMCs = 0;
-    for (int i = 0; i < MAXCOUNTERS; i++)
-        CounterNames[i] = 0;
 }
 
 void CCounters::QueueCounters()

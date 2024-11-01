@@ -305,15 +305,18 @@ public:
     void StartCounters();                                      // start counting
     void StopCounters();                                       // stop and reset counters
     void CleanUp();                                            // Any required cleanup of driver etc
-    void Put1(                                                 // put record into multiple start queues
-        EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi = 0);
-    void Put2(                                                 // put record into multiple stop queues
-        EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi = 0);
-    void GetProcessorVendor();                                 // get microprocessor vendor
-    void GetProcessorFamily();                                 // get microprocessor family
-    void GetPMCScheme();                                       // get PMC scheme
-    long long read1(unsigned int register_number);             // get value from previous MSR_READ command in queue1
-    long long read2(unsigned int register_number);             // get value from previous MSR_READ command in queue2
+
+    void GetProcessorVendor(); // get microprocessor vendor
+    void GetProcessorFamily(); // get microprocessor family
+    void GetPMCScheme();       // get PMC scheme
+
+    // put record into multiple start queues
+    void Put1(EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi = 0);
+    // put record into multiple stop queues
+    void Put2(EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi = 0);
+
+    long long read1(unsigned int register_number); // get value from previous MSR_READ command in queue1
+    long long read2(unsigned int register_number); // get value from previous MSR_READ command in queue2
 
 public:
     int countersCount() const
@@ -344,15 +347,15 @@ public:
     std::string getDiagnostic() const;
 
 protected:
-    int NumCounters = 0;                        // Number of valid PMC counters in Counters[]
+    int NumCounters = 0; // Number of valid PMC counters in Counters[]
 
     const char* CounterNames[MAXCOUNTERS] = {}; // name of each counter
     int Counters[MAXCOUNTERS] = {};             // counter register numbers used
     int EventRegistersUsed[MAXCOUNTERS] = {};   // index of counter registers used
 
-    int Family = -1, Model = -1;                // these are used for diagnostic output
-    int ProcNum0 = 0;                           // desired processor number
-    int UsePMC = 1;                             // 0 if no PMC counters used
+    int Family = -1, Model = -1; // these are used for diagnostic output
+    int ProcNum0 = 0;            // desired processor number
+    int UsePMC = 1;              // 0 if no PMC counters used
 
     double clockFactor = 1.0;    // clock correction factor for AMD Zen processor
 
@@ -368,11 +371,11 @@ protected:
     CMSRInOutQue queue2; // queue of MSR commands to do by StopCounters()
     // translate event select number to register address for P4 processor:
     static int GetP4EventSelectRegAddress(int CounterNr, int EventSelectNo);
-    int NumCounterDefinitions; // number of possible counter definitions in table CounterDefinitions
-    int NumPMCs;               // Number of general PMCs
-    int NumFixedPMCs;          // Number of fixed function PMCs
-    unsigned int rTSCounter;   // PMC register number of time stamp counter in S_AMD2 scheme
-    unsigned int rCoreCounter; // PMC register number of core clock counter in S_AMD2 scheme
+    int NumCounterDefinitions = 0; // number of possible counter definitions in table CounterDefinitions
+    int NumPMCs = 0;               // Number of general PMCs
+    int NumFixedPMCs = 0;          // Number of fixed function PMCs
+    unsigned int rTSCounter = 0;   // PMC register number of time stamp counter in S_AMD2 scheme
+    unsigned int rCoreCounter = 0; // PMC register number of core clock counter in S_AMD2 scheme
 
 private:
     CMSRDriver msr; // interface to MSR access driver
