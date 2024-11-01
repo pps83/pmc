@@ -331,6 +331,11 @@ public:
         return CounterNames[counterNum];
     }
 
+    bool usePMC() const
+    {
+        return UsePMC;
+    }
+
     std::string getDiagnostic() const;
 
 protected:
@@ -342,6 +347,7 @@ protected:
 
     int Family = -1, Model = -1;                // these are used for diagnostic output
     int ProcNum0 = 0;                           // desired processor number
+    int UsePMC = 1;                             // 0 if no PMC counters used
 
     void setDesiredCpu();
 

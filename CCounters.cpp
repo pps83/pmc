@@ -4,7 +4,6 @@
 #endif
 
 // performance counters used
-extern int UsePMC;                              // 0 if no PMC counters used
 extern int CounterTypesDesired[MAXCOUNTERS];    // list of desired counter types
 
 extern double clockFactor;
@@ -698,6 +697,8 @@ int CCounters::StartDriver()
     {
         // Load driver
         ErrNo = msr.LoadDriver();
+        if (ErrNo)
+            UsePMC = 0;
     }
 
     return ErrNo;

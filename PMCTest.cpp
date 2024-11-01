@@ -30,9 +30,6 @@
 // number of repetitions of test. You may change this up to MAXREPEAT
 #define REPETITIONS 8
 
-// Use performance monitor counters. Set to 0 if not used
-#define USE_PERFORMANCE_COUNTERS 1
-
 // Subtract overhead from counts (0 if not)
 #define SUBTRACT_OVERHEAD 1
 
@@ -90,7 +87,6 @@ struct SCounterData
 };
 
 SCounterData CounterData;                 // Results
-int UsePMC = USE_PERFORMANCE_COUNTERS;    // 0 if no PMC counters used
 int* PCounterData = (int*)&CounterData;   // Pointer to measured data
 // offset of clock results into CounterData (bytes)
 int ClockResultsOS = int(CounterData.ClockResults - CounterData.CountTemp) * sizeof(int);
@@ -154,13 +150,11 @@ int TestLoop()
 
         Serialize();
 
-#if USE_PERFORMANCE_COUNTERS
-        // Read counters
-        for (int i = 0; i < MSRCounters.countersCount(); i++)
+        if (MSRCounters.usePMC()) // Read counters
         {
-            CounterData.CountTemp[i + 1] = (int)MSRCounters.counterRead(i);
+            for (int i = 0; i < MSRCounters.countersCount(); i++)
+                CounterData.CountTemp[i + 1] = (int)MSRCounters.counterRead(i);
         }
-#endif
 
         Serialize();
         CounterData.CountTemp[0] = (int)Readtsc();
@@ -172,13 +166,12 @@ int TestLoop()
         CounterData.CountTemp[0] -= (int)Readtsc();
         Serialize();
 
-#if USE_PERFORMANCE_COUNTERS
-        // Read counters
-        for (int i = 0; i < MSRCounters.countersCount(); i++)
+        if (MSRCounters.usePMC()) // Read counters
         {
-            CounterData.CountTemp[i + 1] -= (int)MSRCounters.counterRead(i);
+            for (int i = 0; i < MSRCounters.countersCount(); i++)
+                CounterData.CountTemp[i + 1] -= (int)MSRCounters.counterRead(i);
         }
-#endif
+
         Serialize();
 
         // find minimum counts
@@ -198,13 +191,11 @@ int TestLoop()
 
         Serialize();
 
-#if USE_PERFORMANCE_COUNTERS
-        // Read counters
-        for (int i = 0; i < MSRCounters.countersCount(); i++)
+        if (MSRCounters.usePMC()) // Read counters
         {
-            CounterData.CountTemp[i + 1] = (int)MSRCounters.counterRead(i);
+            for (int i = 0; i < MSRCounters.countersCount(); i++)
+                CounterData.CountTemp[i + 1] = (int)MSRCounters.counterRead(i);
         }
-#endif
 
         Serialize();
         CounterData.CountTemp[0] = (int)Readtsc();
@@ -232,13 +223,12 @@ int TestLoop()
         CounterData.CountTemp[0] -= (int)Readtsc();
         Serialize();
 
-#if USE_PERFORMANCE_COUNTERS
-        // Read counters
-        for (int i = 0; i < MSRCounters.countersCount(); i++)
+        if (MSRCounters.usePMC()) // Read counters
         {
-            CounterData.CountTemp[i + 1] -= (int)MSRCounters.counterRead(i);
+            for (int i = 0; i < MSRCounters.countersCount(); i++)
+                CounterData.CountTemp[i + 1] -= (int)MSRCounters.counterRead(i);
         }
-#endif
+
         Serialize();
 
         // subtract overhead
@@ -282,9 +272,9 @@ int main(int argc, char* argv[])
     // only diagnostics info, don't run test
     // printf("%s\n", MSRCounters.getDiagnostic().c_str()); return 0;
 
-    // Install and load driver
-    int err = MSRCounters.StartDriver();
-    if (err)
+    bool requirePMC = false; // continue without PMC is failed to load driver
+    int err = MSRCounters.StartDriver(); // Install and load driver
+    if (err && requirePMC)
     {
         printf("Error: failed to load driver\n");
         return 1;
@@ -309,7 +299,7 @@ int main(int argc, char* argv[])
 
         // print column headings
         printf("\n     Clock ");
-        if (UsePMC)
+        if (MSRCounters.usePMC())
         {
             if (MSRCounters.MScheme == S_AMD2)
             {
@@ -326,7 +316,7 @@ int main(int argc, char* argv[])
         {
             int tscClock = PCounterData[repi + ClockOS];
             printf("\n%10i ", tscClock);
-            if (UsePMC)
+            if (MSRCounters.usePMC())
             {
                 if (MSRCounters.MScheme == S_AMD2)
                 {
