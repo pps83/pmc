@@ -309,6 +309,33 @@ SCounterDefinition CounterDefinitions[] = {
     // The first three counters are fixed-function counters having their own register,
     // The rest of the counters are competing for the same four counter registers.
     // id   scheme  cpu       countregs eventreg event  mask   name
+    {1,   S_ID4,  INTEL_ICE, 0x40000001,  0,0,   0,     0,   "Core cyc"   }, // core clock cycles
+    {2,   S_ID4,  INTEL_ICE, 0x40000002,  0,0,   0,     0,   "Ref cyc"    }, // Reference clock cycles
+    {9,   S_ID4,  INTEL_ICE, 0x40000000,  0,0,   0,     0,   "Instruct"   }, // Instructions (reference counter)
+    {10,  S_ID4,  INTEL_ICE, 0,  7,     0,   0xc0,     0x00, "Instruct"   }, // Instructions
+    {22,  S_ID4,  INTEL_ICE, 0,  7,     0,   0x87,     0x01, "ILenStal"   }, // instruction length decoder stall due to length changing prefix
+    {24,  S_ID4,  INTEL_ICE, 0,  7,     0,   0xA8,     0x01, "Loop uops"  }, // uops from loop stream detector
+    {25,  S_ID4,  INTEL_ICE, 0,  7,     0,   0x79,     0x04, "Dec uops"   }, // uops from decoders. (MITE = Micro-instruction Translation Engine)
+    {26,  S_ID4,  INTEL_ICE, 0,  7,     0,   0x79,     0x08, "Cach uops"  }, // uops from uop cache. (DSB = Decoded Stream Buffer)
+    {100, S_ID4,  INTEL_ICE, 0,  7,     0,   0xc2,     0x01, "Uops"       }, // uops retired, unfused domain
+    {104, S_ID4,  INTEL_ICE, 0,  7,     0,   0x0e,     0x01, "uops RAT"   }, // uops from RAT to RS
+    {111, S_ID4,  INTEL_ICE, 0,  7,     0,   0xa2,     0x08, "res.stl."   }, // resource stall
+    {131, S_ID4,  INTEL_ICE, 0,  7,     0,   0xC1,     0x07, "uc asist"   }, // microcode assist
+    {150, S_ID4,  INTEL_ICE, 0,  7,     0,   0xa1,     0x01, "uop p0"     }, // uops port 0.
+    {151, S_ID4,  INTEL_ICE, 0,  7,     0,   0xa1,     0x02, "uop p1"     }, // uops port 1.
+    {152, S_ID4,  INTEL_ICE, 0,  7,     0,   0xa1,     0x04, "uop p23"    }, // uops port 2&3.
+    {154, S_ID4,  INTEL_ICE, 0,  7,     0,   0xa1,     0x10, "uop p49"    }, // uops port 4&9.
+    {155, S_ID4,  INTEL_ICE, 0,  7,     0,   0xa1,     0x20, "uop p5"     }, // uops port 5.
+    {156, S_ID4,  INTEL_ICE, 0,  7,     0,   0xa1,     0x40, "uop p6"     }, // uops port 6.
+    {157, S_ID4,  INTEL_ICE, 0,  7,     0,   0xa1,     0x80, "uop p78"    }, // uops port 7&8.
+    {201, S_ID4,  INTEL_ICE, 0,  7,     0,   0xC4,     0x20, "BrTaken"    }, // branches taken
+    {207, S_ID4,  INTEL_ICE, 0,  7,     0,   0xC5,     0x00, "BrMispred"  }, // mispredicted branches
+    {310, S_ID4,  INTEL_ICE, 0,  7,     0,   0x80,     0x04, "CodeMiss"   }, // code cache misses
+    {311, S_ID4,  INTEL_ICE, 0,  7,     0,   0x24,     0xe1, "L1D Miss"   }, // level 1 data cache miss
+    {320, S_ID4,  INTEL_ICE, 0,  7,     0,   0x24,     0x21, "L2 Miss"    }, // level 2 cache misses
+
+    // Also Tiger lake
+    // id   scheme  cpu       countregs eventreg event  mask   name
     {1,   S_ID5,  INTEL_ICE, 0x40000001,  0,0,   0,     0,   "Core cyc"   }, // core clock cycles
     {2,   S_ID5,  INTEL_ICE, 0x40000002,  0,0,   0,     0,   "Ref cyc"    }, // Reference clock cycles
     {9,   S_ID5,  INTEL_ICE, 0x40000000,  0,0,   0,     0,   "Instruct"   }, // Instructions (reference counter)
@@ -873,6 +900,7 @@ void CCounters::GetProcessorFamily()
                 MFamily = INTEL_SKYL;
                 break; // Skylake
             case 0x8C:
+            case 0x8E:
                 MFamily = INTEL_ICE;
                 break; // Ice Lake, Tiger Lake
             case 0x97:
