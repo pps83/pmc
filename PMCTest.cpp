@@ -142,8 +142,6 @@ int PMCResultsOS = int(CounterData.PMCResults - CounterData.CountTemp) * sizeof(
 
 int UserData[USER_DATA_SIZE];
 
-int diagnostics = 0; // 1 for output of CPU model and PMC scheme
-
 // desired processor number
 int ProcNum0 = 0;
 
@@ -310,8 +308,6 @@ void TestProc()
 
 int main(int argc, char* argv[])
 {
-    // diagnostics = 1;
-
     // Get mask of possible CPU cores
     SyS::ProcMaskType ProcessAffMask = SyS::GetProcessMask();
 
@@ -341,8 +337,8 @@ int main(int argc, char* argv[])
     // Find counter definitions and put them in queue for driver
     MSRCounters.QueueCounters();
 
-    if (diagnostics)
-        return 0; // just return CPU info, don't run test
+    // only diagnostics info, don't run test
+    // printf("%s\n", MSRCounters.getDiagnostic().c_str()); return 0;
 
     // Install and load driver
     int err = MSRCounters.StartDriver();

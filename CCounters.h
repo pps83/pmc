@@ -1,11 +1,12 @@
 #pragma once
 #include "MSRDriver.h"
 #include "DriverWrapper.h"
+#include <string>
+#include <stdint.h>
+#include <stdio.h>
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
-#include <stdint.h>
-#include <stdio.h>
 #include <windows.h>
 #include <winsvc.h>
 
@@ -330,12 +331,16 @@ public:
         return CounterNames[counterNum];
     }
 
+    std::string getDiagnostic() const;
+
 protected:
     int NumCounters = 0;                        // Number of valid PMC counters in Counters[]
 
     const char* CounterNames[MAXCOUNTERS] = {}; // name of each counter
     int Counters[MAXCOUNTERS] = {};             // counter register numbers used
     int EventRegistersUsed[MAXCOUNTERS] = {};   // index of counter registers used
+
+    int Family = -1, Model = -1; // these are used for diagnostic output
 
 public:
     EProcVendor MVendor; // microprocessor vendor

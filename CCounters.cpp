@@ -9,7 +9,6 @@ extern int CounterTypesDesired[MAXCOUNTERS];    // list of desired counter types
 
 extern int ProcNum0;
 extern double clockFactor;
-extern int diagnostics;
 
 #define Cpuid __cpuid
 
@@ -666,7 +665,7 @@ int CCounters::StartDriver()
     // return error code
     int ErrNo = 0;
 
-    if (UsePMC /*&& !diagnostics*/)
+    if (UsePMC)
     {
         // Load driver
         ErrNo = msr.LoadDriver();
@@ -762,17 +761,12 @@ void CCounters::GetProcessorVendor()
         MVendor = AMD; // AMD   "AuthenticAMD"
     if (CpuIdOutput[1] == 0x746E6543)
         MVendor = VIA; // VIA   "CentaurHauls"
-    if (diagnostics)
-    {
-        printf("\nVendor = %X", MVendor);
-    }
 }
 
 void CCounters::GetProcessorFamily()
 {
     // get microprocessor family
     int CpuIdOutput[4];
-    int Family, Model;
 
     MFamily = PRUNKNOWN; // default = unknown
 
@@ -918,10 +912,6 @@ void CCounters::GetProcessorFamily()
         if (Family == 6 && Model >= 0x0F)
             MFamily = VIA_NANO; // VIA Nano
     }
-    if (diagnostics)
-    {
-        printf(" Family %X, Model %X, MFamily %X", Family, Model, MFamily);
-    }
 }
 
 void CCounters::GetPMCScheme()
@@ -1009,12 +999,6 @@ void CCounters::GetPMCScheme()
                 break;
             }
         }
-    }
-    if (diagnostics)
-    {
-        if (MVendor == INTEL)
-            printf(", NumPMCs %X, NumFixedPMCs %X", NumPMCs, NumFixedPMCs);
-        printf(", MScheme %X\n", MScheme);
     }
 }
 
@@ -1274,4 +1258,23 @@ int CCounters::GetP4EventSelectRegAddress(int CounterNr, int EventSelectNo)
     if (n & 2)
         a++;
     return a;
+}
+
+std::string CCounters::getDiagnostic() const
+{
+    if (Family == -1)
+        return "??"; // QueueCounters wasn't called
+
+    char buf[512];
+    if (MVendor == INTEL)
+    {
+        snprintf(buf, sizeof(buf) - 1, "Vendor:%X Family:%X Model:%X MFamily:%X NumPMCs:%X NumFixedPMCs:%X MScheme:%X",
+            MVendor, Family, Model, MFamily, NumPMCs, NumFixedPMCs, MScheme);
+    }
+    else
+    {
+        snprintf(buf, sizeof(buf) - 1, "Vendor:%X Family:%X Model:%X MFamily:%X MScheme:%X", MVendor, Family, Model,
+            MFamily, MScheme);
+    }
+    return buf;
 }
