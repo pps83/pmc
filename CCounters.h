@@ -26,21 +26,10 @@ static inline void Serialize()
     // Prevent the compiler from optimizing away the whole Serialize function:
     volatile int DontSkip = dummy[0];
 }
-#define Cpuid __cpuid
 #define Readtsc __rdtsc
 #define Readpmc __readpmc
 
 #else // This version is for gas/AT&T syntax
-
-static void Cpuid(int Output[4], int aa)
-{
-    int a, b, c, d;
-    __asm("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(aa), "c"(0) :);
-    Output[0] = a;
-    Output[1] = b;
-    Output[2] = c;
-    Output[3] = d;
-}
 
 static inline void Serialize()
 {

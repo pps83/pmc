@@ -6,7 +6,19 @@
 // performance counters used
 extern int CounterTypesDesired[MAXCOUNTERS]; // list of desired counter types
 
+#ifdef _MSC_VER
 #define Cpuid __cpuid
+#else
+static void Cpuid(int Output[4], int aa)
+{
+    int a, b, c, d;
+    __asm("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(aa), "c"(0) :);
+    Output[0] = a;
+    Output[1] = b;
+    Output[2] = c;
+    Output[3] = d;
+}
+#endif
 
 typedef DWORD_PTR ProcMaskType; // Type for processor mask
 
