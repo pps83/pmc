@@ -3,9 +3,6 @@
 #include <intrin.h>
 #endif
 
-// performance counters used
-extern int CounterTypesDesired[MAXCOUNTERS]; // list of desired counter types
-
 #ifdef _MSC_VER
 #define Cpuid __cpuid
 #else
@@ -653,7 +650,7 @@ CCounters::CCounters()
     MScheme = S_UNKNOWN;
 }
 
-void CCounters::QueueCounters()
+void CCounters::QueueCounters(const int counters[], int count)
 {
     // Put counter definitions in queue
     int n = 0, CounterType;
@@ -670,9 +667,9 @@ void CCounters::QueueCounters()
     if (UsePMC)
     {
         // Get all counter requests
-        for (int i = 0; i < MAXCOUNTERS; i++)
+        for (int i = 0; i < count; i++)
         {
-            CounterType = CounterTypesDesired[i];
+            CounterType = counters[i];
             err = DefineCounter(CounterType);
             if (err)
             {

@@ -67,11 +67,11 @@ static inline void SetProcessPriorityNormal()
 ############################################################################*/
 //
 // Here you can select which performance monitor counters you want for your test.
-// Select id numbers from the table CounterDefinitions[] in PMCTestA.cpp.
+// Select id numbers from the table CounterDefinitions[] in PMCTest.cpp.
 // The maximum number of counters you can have is MAXCOUNTERS.
 // Insert zeros if you have less than MAXCOUNTERS counters.
 
-int CounterTypesDesired[MAXCOUNTERS] = {
+static const int counterTypesDesired[] = {
     1,   // core clock cycles (Intel Core 2 and later)
     9,   // instructions (not P4)
     100, // micro-operations
@@ -264,7 +264,7 @@ int main(int argc, char* argv[])
     MSRCounters.LockProcessor();
 
     // Find counter definitions and put them in queue for driver
-    MSRCounters.QueueCounters();
+    MSRCounters.QueueCounters(counterTypesDesired, std::size(counterTypesDesired));
 
     // only diagnostics info, don't run test
     // printf("%s\n", MSRCounters.getDiagnostic().c_str()); return 0;

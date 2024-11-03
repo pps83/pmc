@@ -289,7 +289,7 @@ public:
     const char* DefineCounter(int CounterType);                // request a counter setup
     const char* DefineCounter(SCounterDefinition& CounterDef); // request a counter setup
     void LockProcessor();                                      // Make program and driver use the same processor number
-    void QueueCounters();                                      // Put counter definitions in queue
+    void QueueCounters(const int counters[], int count);       // Put counter definitions in queue
     int StartDriver();                                         // Install and load driver
     void StartCounters();                                      // start counting
     void StopCounters();                                       // stop and reset counters
