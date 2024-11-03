@@ -6,8 +6,6 @@
 // performance counters used
 extern int CounterTypesDesired[MAXCOUNTERS];    // list of desired counter types
 
-extern double clockFactor;
-
 #define Cpuid __cpuid
 
 typedef DWORD_PTR ProcMaskType; // Type for processor mask

@@ -109,9 +109,6 @@ int PMCResultsOS = int(CounterData.PMCResults - CounterData.CountTemp) * sizeof(
 
 int UserData[USER_DATA_SIZE];
 
-// clock correction factor for AMD Zen processor
-double clockFactor = 0;
-
 // number of test repetitions
 int repetitions;
 
@@ -320,7 +317,7 @@ int main(int argc, char* argv[])
             {
                 if (MSRCounters.MScheme == S_AMD2)
                 {
-                    printf("%10i ", int(tscClock * clockFactor + 0.5)); // Calculated core clock count
+                    printf("%10i ", int(tscClock * MSRCounters.getClockFactor() + 0.5)); // Calculated core clock count
                 }
                 for (int i = 0; i < MSRCounters.countersCount(); i++)
                 {
@@ -330,7 +327,7 @@ int main(int argc, char* argv[])
         }
         if (MSRCounters.MScheme == S_AMD2)
         {
-            printf("\nClock factor %.4f", clockFactor);
+            printf("\nClock factor %.4f", MSRCounters.getClockFactor());
         }
     }
 

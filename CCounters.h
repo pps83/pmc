@@ -336,6 +336,11 @@ public:
         return UsePMC;
     }
 
+    double getClockFactor() const
+    {
+        return clockFactor;
+    }
+
     std::string getDiagnostic() const;
 
 protected:
@@ -349,6 +354,8 @@ protected:
     int ProcNum0 = 0;                           // desired processor number
     int UsePMC = 1;                             // 0 if no PMC counters used
 
+    double clockFactor = 1.0;    // clock correction factor for AMD Zen processor
+
     void setDesiredCpu();
 
 public:
@@ -357,8 +364,8 @@ public:
     EPMCScheme MScheme;  // PMC monitoring scheme
 
 protected:
-    CMSRInOutQue queue1; // que of MSR commands to do by StartCounters()
-    CMSRInOutQue queue2; // que of MSR commands to do by StopCounters()
+    CMSRInOutQue queue1; // queue of MSR commands to do by StartCounters()
+    CMSRInOutQue queue2; // queue of MSR commands to do by StopCounters()
     // translate event select number to register address for P4 processor:
     static int GetP4EventSelectRegAddress(int CounterNr, int EventSelectNo);
     int NumCounterDefinitions; // number of possible counter definitions in table CounterDefinitions
