@@ -4,6 +4,7 @@
 #include <string>
 #include <stdint.h>
 #include <stdio.h>
+#include <assert.h>
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
@@ -285,7 +286,44 @@ class CCounters
 {
 public:
     CCounters();
+    ~CCounters();
 
+    bool init(const int counters[], int count);
+    void deinit();
+
+    int countersCount() const
+    {
+        return NumCounters;
+    }
+
+    uint64_t counterRead(int counterNum) const
+    {
+        assert(counterNum < NumCounters);
+        return Readpmc(Counters[counterNum]);
+    }
+
+    const char* counterName(int counterNum) const
+    {
+        return CounterNames[counterNum];
+    }
+
+    bool usePMC() const
+    {
+        return UsePMC;
+    }
+
+    double getClockFactor() const
+    {
+        return clockFactor;
+    }
+
+    std::string getDiagnostic() const;
+
+    EProcVendor MVendor; // microprocessor vendor
+    EProcFamily MFamily; // microprocessor type and family
+    EPMCScheme MScheme;  // PMC monitoring scheme
+
+protected:
     const char* DefineCounter(int CounterType);                // request a counter setup
     const char* DefineCounter(SCounterDefinition& CounterDef); // request a counter setup
     void LockProcessor();                                      // Make program and driver use the same processor number
@@ -307,35 +345,6 @@ public:
     long long read1(unsigned int register_number); // get value from previous MSR_READ command in queue1
     long long read2(unsigned int register_number); // get value from previous MSR_READ command in queue2
 
-public:
-    int countersCount() const
-    {
-        return NumCounters;
-    }
-
-    uint64_t counterRead(int counterNum) const
-    {
-        return Readpmc(Counters[counterNum]);
-    }
-
-    const char* counterName(int counterNum) const
-    {
-        return CounterNames[counterNum];
-    }
-
-    bool usePMC() const
-    {
-        return UsePMC;
-    }
-
-    double getClockFactor() const
-    {
-        return clockFactor;
-    }
-
-    std::string getDiagnostic() const;
-
-protected:
     int NumCounters = 0; // Number of valid PMC counters in Counters[]
 
     const char* CounterNames[MAXCOUNTERS] = {}; // name of each counter
@@ -349,11 +358,6 @@ protected:
     double clockFactor = 1.0;    // clock correction factor for AMD Zen processor
 
     void setDesiredCpu();
-
-public:
-    EProcVendor MVendor; // microprocessor vendor
-    EProcFamily MFamily; // microprocessor type and family
-    EPMCScheme MScheme;  // PMC monitoring scheme
 
 protected:
     CMSRInOutQue queue1; // queue of MSR commands to do by StartCounters()

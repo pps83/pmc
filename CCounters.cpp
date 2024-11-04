@@ -44,6 +44,23 @@ static inline int TestProcessMask(int p, ProcMaskType* m)
     return ((ProcMaskType)1 << p) & *m;
 }
 
+static inline void Sleep0() // Sleep for the rest of current timeslice
+{
+    Sleep(0);
+}
+
+// Set process (all threads) to high priority
+static inline void SetProcessPriorityHigh()
+{
+    SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
+}
+
+// Set process (all threads) to normal priority
+static inline void SetProcessPriorityNormal()
+{
+    SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
+}
+
 //////////////////////////////////////////////////////////////////////////////
 //
 //             list of counter definitions
@@ -648,6 +665,45 @@ CCounters::CCounters()
     MVendor = VENDOR_UNKNOWN;
     MFamily = PRUNKNOWN;
     MScheme = S_UNKNOWN;
+}
+
+CCounters::~CCounters()
+{
+}
+
+bool CCounters::init(const int counters[], int count)
+{
+    assert(count <= MAXCOUNTERS);
+
+    // Make program and driver use the same processor number
+    LockProcessor();
+
+    // Find counter definitions and put them in queue for driver
+    QueueCounters(counters, count);
+
+    // only diagnostics info, don't run test
+    // printf("%s\n", MSRCounters.getDiagnostic().c_str()); return 0;
+
+    bool requirePMC = false; // continue without PMC is failed to load driver
+    int err = StartDriver(); // Install and load driver
+    if (err && requirePMC)
+    {
+        printf("Error: failed to load driver\n");
+        return false;
+    }
+    // Set high priority to minimize risk of interrupts during test
+    SetProcessPriorityHigh();
+    StartCounters(); // Start MSR counters
+    Sleep0(); // Wait for rest of timeslice
+    return true;
+}
+
+void CCounters::deinit()
+{
+    Sleep0(); // Wait for rest of timeslice
+    StopCounters(); // Stop MSR counters
+    SetProcessPriorityNormal();
+    CleanUp();
 }
 
 void CCounters::QueueCounters(const int counters[], int count)

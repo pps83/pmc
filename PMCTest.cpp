@@ -21,7 +21,6 @@
 // © 2000-2022 GNU General Public License v. 3. www.gnu.org/licenses
 //////////////////////////////////////////////////////////////////////////////
 
-#include "MSRDriver.h"
 #include "CCounters.h"
 #include <windows.h>
 #include <stdlib.h>
@@ -38,27 +37,6 @@
 
 // Cache line size (for preventing threads using same cache lines)
 #define CACHELINESIZE 64
-
-namespace SyS // system-specific process and thread functions
-{
-// Sleep for the rest of current timeslice
-static inline void Sleep0()
-{
-    Sleep(0);
-}
-
-// Set process (all threads) to high priority
-static inline void SetProcessPriorityHigh()
-{
-    SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-}
-
-// Set process (all threads) to normal priority
-static inline void SetProcessPriorityNormal()
-{
-    SetPriorityClass(GetCurrentProcess(), NORMAL_PRIORITY_CLASS);
-}
-} // namespace SyS
 
 /*############################################################################
 #
@@ -109,13 +87,7 @@ int PMCResultsOS = int(CounterData.PMCResults - CounterData.CountTemp) * sizeof(
 
 int UserData[USER_DATA_SIZE];
 
-// number of test repetitions
-int repetitions;
-
-// Create CCounters instance
-CCounters MSRCounters;
-
-int TestLoop()
+int TestLoop(const CCounters& MSRCounters)
 {
     // this function runs the code to test REPETITIONS times
     // and reads the counters before and after each run:
@@ -185,7 +157,6 @@ int TestLoop()
     // This must be identical to first test loop, except for the test code
     for (repi = 0; repi < REPETITIONS; repi++)
     {
-
         Serialize();
 
         if (MSRCounters.usePMC()) // Read counters
@@ -240,53 +211,16 @@ int TestLoop()
     return REPETITIONS;
 }
 
-void TestProc()
-{
-    // Start MSR counters
-    MSRCounters.StartCounters();
-
-    // Wait for rest of timeslice
-    SyS::Sleep0();
-
-    // Run the test code
-    repetitions = TestLoop();
-
-    // Wait for rest of timeslice
-    SyS::Sleep0();
-
-    // Start MSR counters
-    MSRCounters.StopCounters();
-}
-
 int main(int argc, char* argv[])
 {
-    // Make program and driver use the same processor number
-    MSRCounters.LockProcessor();
+    CCounters MSRCounters;
 
-    // Find counter definitions and put them in queue for driver
-    MSRCounters.QueueCounters(counterTypesDesired, std::size(counterTypesDesired));
-
-    // only diagnostics info, don't run test
-    // printf("%s\n", MSRCounters.getDiagnostic().c_str()); return 0;
-
-    bool requirePMC = false; // continue without PMC is failed to load driver
-    int err = MSRCounters.StartDriver(); // Install and load driver
-    if (err && requirePMC)
-    {
-        printf("Error: failed to load driver\n");
+    if (!MSRCounters.init(counterTypesDesired, std::size(counterTypesDesired)))
         return 1;
-    }
 
-    // Set high priority to minimize risk of interrupts during test
-    SyS::SetProcessPriorityHigh();
+    int repetitions = TestLoop(MSRCounters); // Run the test code
 
-    TestProc();
-
-    // Set priority back normal
-    SyS::SetProcessPriorityNormal();
-
-    // Clean up
-    MSRCounters.CleanUp();
+    MSRCounters.deinit();
 
     // Print results
     {
