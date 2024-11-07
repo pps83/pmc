@@ -19,6 +19,19 @@ static void Cpuid(int Output[4], int aa)
 
 typedef DWORD_PTR ProcMaskType; // Type for processor mask
 
+// record specifying how to count a particular event on a particular CPU family
+struct SCounterDefinition
+{
+    int CounterType;                  // ID identifying what to count
+    EPMCScheme PMCScheme;             // PMC scheme. values may be OR'ed
+    EProcFamily ProcessorFamily;      // processor family. values may be OR'ed
+    int CounterFirst, CounterLast;    // counter number or a range of possible alternative counter numbers
+    int EventSelectReg;               // event select register
+    int Event;                        // event code
+    int EventMask;                    // event mask
+    const char* Description;          // name of counter.
+};
+
 // Get mask of possible CPU cores
 static inline ProcMaskType GetProcessMask()
 {
@@ -116,7 +129,7 @@ static inline void SetProcessPriorityNormal()
 //    EventMask = Unit mask.
 //
 
-static SCounterDefinition CounterDefinitions[] = {
+static const SCounterDefinition CounterDefinitions[] = {
     //  id   scheme cpu    countregs eventreg event  mask   name
     {100,  S_P4, PRALL,  4,   7,     0,      9,      7,  "Uops"     }, // uops from any source
     {101,  S_P4, PRALL,  4,   7,     0,      9,      2,  "UopsTC"   }, // uops from trace cache
@@ -1117,14 +1130,13 @@ void CCounters::GetPMCScheme()
     }
 }
 
-// Request a counter setup
-// (return value is error message)
+// Request a counter setup (return value is error message)
 const char* CCounters::DefineCounter(int CounterType)
 {
     if (CounterType == 0)
         return NULL;
     int i;
-    SCounterDefinition* p;
+    const SCounterDefinition* p;
 
     // Search for matching counter definition
     for (i = 0, p = CounterDefinitions; i < NumCounterDefinitions; i++, p++)
@@ -1140,9 +1152,8 @@ const char* CCounters::DefineCounter(int CounterType)
     return DefineCounter(*p);
 }
 
-// Request a counter setup
-// (return value is error message)
-const char* CCounters::DefineCounter(SCounterDefinition& CDef)
+// Request a counter setup (return value is error message)
+const char* CCounters::DefineCounter(const SCounterDefinition& CDef)
 {
     int counternr, a, b, reg, eventreg, tag;
     static int CountersEnabled = 0, FixedCountersEnabled = 0;
@@ -1162,16 +1173,10 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
     else
     {
         // check CounterLast
-        if (CDef.CounterLast < CDef.CounterFirst)
-        {
-            CDef.CounterLast = CDef.CounterFirst;
-        }
-        if (CDef.CounterLast >= NumPMCs && (MScheme & S_INTL))
-        {
-        }
+        int CounterLast = CDef.CounterLast < CDef.CounterFirst ? CDef.CounterFirst : CDef.CounterLast;
 
         // Find vacant counter
-        for (counternr = CDef.CounterFirst; counternr <= CDef.CounterLast; counternr++)
+        for (counternr = CDef.CounterFirst; counternr <= CounterLast; counternr++)
         {
             // Check if this counter register is already in use
             for (int i = 0; i < NumCounters; i++)
@@ -1202,7 +1207,7 @@ const char* CCounters::DefineCounter(SCounterDefinition& CDef)
             // This counter is occupied. keep searching
         }
 
-        if (counternr > CDef.CounterLast)
+        if (counternr > CounterLast)
         {
             // No vacant counter found
             return "Counter registers are already in use";

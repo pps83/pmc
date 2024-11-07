@@ -13,9 +13,6 @@
 // maximum number of performance counters used
 const int MAXCOUNTERS = 8;
 
-// max name length of counters
-const int COUNTERNAMELEN = 10;
-
 #ifdef _MSC_VER // Use intrinsics for low level functions
 
 static inline void Serialize()
@@ -115,18 +112,7 @@ enum EPMCScheme
     S_VIA = 0x100000 // VIA Nano processor and later
 };
 
-// record specifying how to count a particular event on a particular CPU family
-struct SCounterDefinition
-{
-    int CounterType;                  // ID identifying what to count
-    EPMCScheme PMCScheme;             // PMC scheme. values may be OR'ed
-    EProcFamily ProcessorFamily;      // processor family. values may be OR'ed
-    int CounterFirst, CounterLast;    // counter number or a range of possible alternative counter numbers
-    int EventSelectReg;               // event select register
-    int Event;                        // event code
-    int EventMask;                    // event mask
-    char Description[COUNTERNAMELEN]; // name of counter. length must be < COUNTERNAMELEN
-};
+struct SCounterDefinition;
 
 // list of input/output data structures for MSR driver
 #define MAX_QUE_ENTRIES 11 // maximum number of entries in queue
@@ -327,7 +313,8 @@ public:
 
 protected:
     const char* DefineCounter(int CounterType);                // request a counter setup
-    const char* DefineCounter(SCounterDefinition& CounterDef); // request a counter setup
+    const char* DefineCounter(const SCounterDefinition& CounterDef);
+
     void LockProcessor();                                      // Make program and driver use the same processor number
     void QueueCounters(const int counters[], int count);       // Put counter definitions in queue
     int StartDriver();                                         // Install and load driver
