@@ -647,7 +647,7 @@ CMSRInOutQue::CMSRInOutQue()
 int CMSRInOutQue::put(
     EMSR_COMMAND msr_command, unsigned int register_number, unsigned int value_lo, unsigned int value_hi)
 {
-
+    assert(n < MAX_QUE_ENTRIES);
     if (n >= MAX_QUE_ENTRIES)
         return -10;
 

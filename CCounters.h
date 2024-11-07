@@ -9,7 +9,6 @@
 #include <intrin.h>
 #endif
 #include <windows.h>
-#include <winsvc.h>
 
 // maximum number of performance counters used
 const int MAXCOUNTERS = 8;
@@ -128,6 +127,9 @@ struct SCounterDefinition
     int EventMask;                    // event mask
     char Description[COUNTERNAMELEN]; // name of counter. length must be < COUNTERNAMELEN
 };
+
+// list of input/output data structures for MSR driver
+#define MAX_QUE_ENTRIES 11 // maximum number of entries in queue
 
 class CMSRInOutQue
 {

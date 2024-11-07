@@ -7,9 +7,6 @@
 
 #pragma once
 
-// list of input/output data structures for MSR driver
-#define MAX_QUE_ENTRIES 32 // maximum number of entries in queue
-
 // commands for MSR driver. Shared with application program
 enum EMSR_COMMAND
 {
